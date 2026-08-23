@@ -1,0 +1,220 @@
+:root {
+  --font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  /* Light theme color palette */
+  --bg-app: #f8fafc;
+  --bg-gradient: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  --glow-1: rgba(102, 126, 234, 0.14);
+  --glow-2: rgba(255, 167, 38, 0.12);
+  --glow-3: rgba(124, 58, 237, 0.1);
+  --glow-subtle: rgba(15, 23, 42, 0.04);
+
+  --panel-bg: rgba(255, 255, 255, 0.82);
+  --panel-border: rgba(15, 23, 42, 0.08);
+  --panel-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+  --text-subtle: #9ca3af;
+
+  --accent-primary: #7c3aed;
+  --accent-secondary: #2563eb;
+  --accent-gradient: linear-gradient(135deg, #7c3aed, #2563eb);
+  --accent-shadow: 0 12px 26px rgba(124, 58, 237, 0.22);
+  --accent-focus-ring: rgba(124, 58, 237, 0.28);
+
+  --input-bg: rgba(255, 255, 255, 0.92);
+  --input-border: rgba(15, 23, 42, 0.14);
+  --input-text: #111827;
+  --input-placeholder: #9ca3af;
+
+  --stat-bg: rgba(15, 23, 42, 0.03);
+  --stat-border: rgba(15, 23, 42, 0.08);
+
+  --toolbar-bg: rgba(15, 23, 42, 0.02);
+  --toolbar-border: rgba(15, 23, 42, 0.08);
+
+  --category-btn-bg: rgba(124, 58, 237, 0.08);
+  --category-btn-text: #6d28d9;
+  --category-btn-border: rgba(124, 58, 237, 0.25);
+  --category-btn-hover: rgba(124, 58, 237, 0.14);
+
+  --category-pill-bg: rgba(124, 58, 237, 0.1);
+  --category-pill-text: #6d28d9;
+  --category-pill-border: rgba(124, 58, 237, 0.22);
+
+  --table-head-text: #6b7280;
+  --table-border: rgba(15, 23, 42, 0.08);
+  --table-row-bg: rgba(255, 255, 255, 0.9);
+  --table-row-hover: rgba(248, 250, 252, 0.9);
+
+  --button-secondary-bg: rgba(15, 23, 42, 0.04);
+  --button-secondary-text: #111827;
+  --button-secondary-border: rgba(15, 23, 42, 0.08);
+  --button-secondary-hover: rgba(15, 23, 42, 0.08);
+
+  --danger-bg: rgba(220, 38, 38, 0.08);
+  --danger-text: #b91c1c;
+  --danger-hover: rgba(220, 38, 38, 0.14);
+
+  --alert-bg: rgba(220, 38, 38, 0.08);
+  --alert-text: #991b1b;
+  --alert-border: rgba(220, 38, 38, 0.14);
+
+  --empty-bg: rgba(15, 23, 42, 0.03);
+  --empty-text: #4b5563;
+  --empty-border: rgba(15, 23, 42, 0.12);
+
+  --modal-overlay: rgba(15, 23, 42, 0.45);
+  --modal-bg: rgba(255, 255, 255, 0.96);
+  --modal-border: rgba(15, 23, 42, 0.1);
+  --modal-shadow: 0 30px 90px rgba(15, 23, 42, 0.2);
+
+  --toggle-track-bg: rgba(15, 23, 42, 0.08);
+  --toggle-track-border: rgba(15, 23, 42, 0.12);
+  --toggle-thumb-bg: #ffffff;
+  --toggle-thumb-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+  --toggle-icon-color: #d97706;
+  --toggle-text-color: #4b5563;
+
+  color-scheme: light;
+  font-family: var(--font-family);
+  color: var(--text-secondary);
+  background: var(--bg-gradient);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="dark"] {
+  --bg-app: #090d16;
+  --bg-gradient: linear-gradient(180deg, #090d16 0%, #0f172a 100%);
+  --glow-1: rgba(99, 102, 241, 0.18);
+  --glow-2: rgba(234, 88, 12, 0.12);
+  --glow-3: rgba(139, 92, 246, 0.15);
+  --glow-subtle: rgba(0, 0, 0, 0.3);
+
+  --panel-bg: rgba(17, 24, 39, 0.82);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --panel-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+
+  --text-primary: #f9fafb;
+  --text-secondary: #e5e7eb;
+  --text-muted: #9ca3af;
+  --text-subtle: #6b7280;
+
+  --accent-primary: #8b5cf6;
+  --accent-secondary: #3b82f6;
+  --accent-gradient: linear-gradient(135deg, #8b5cf6, #3b82f6);
+  --accent-shadow: 0 12px 26px rgba(139, 92, 246, 0.3);
+  --accent-focus-ring: rgba(139, 92, 246, 0.4);
+
+  --input-bg: rgba(30, 41, 59, 0.75);
+  --input-border: rgba(255, 255, 255, 0.14);
+  --input-text: #f9fafb;
+  --input-placeholder: #64748b;
+
+  --stat-bg: rgba(255, 255, 255, 0.04);
+  --stat-border: rgba(255, 255, 255, 0.08);
+
+  --toolbar-bg: rgba(255, 255, 255, 0.03);
+  --toolbar-border: rgba(255, 255, 255, 0.07);
+
+  --category-btn-bg: rgba(139, 92, 246, 0.16);
+  --category-btn-text: #c4b5fd;
+  --category-btn-border: rgba(139, 92, 246, 0.35);
+  --category-btn-hover: rgba(139, 92, 246, 0.25);
+
+  --category-pill-bg: rgba(139, 92, 246, 0.18);
+  --category-pill-text: #c4b5fd;
+  --category-pill-border: rgba(139, 92, 246, 0.35);
+
+  --table-head-text: #9ca3af;
+  --table-border: rgba(255, 255, 255, 0.07);
+  --table-row-bg: rgba(24, 33, 47, 0.65);
+  --table-row-hover: rgba(30, 41, 59, 0.7);
+
+  --button-secondary-bg: rgba(255, 255, 255, 0.06);
+  --button-secondary-text: #f3f4f6;
+  --button-secondary-border: rgba(255, 255, 255, 0.1);
+  --button-secondary-hover: rgba(255, 255, 255, 0.12);
+
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --danger-text: #fca5a5;
+  --danger-hover: rgba(239, 68, 68, 0.25);
+
+  --alert-bg: rgba(239, 68, 68, 0.15);
+  --alert-text: #fca5a5;
+  --alert-border: rgba(239, 68, 68, 0.25);
+
+  --empty-bg: rgba(255, 255, 255, 0.03);
+  --empty-text: #9ca3af;
+  --empty-border: rgba(255, 255, 255, 0.1);
+
+  --modal-overlay: rgba(0, 0, 0, 0.72);
+  --modal-bg: rgba(17, 24, 39, 0.96);
+  --modal-border: rgba(255, 255, 255, 0.12);
+  --modal-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+
+  --toggle-track-bg: rgba(255, 255, 255, 0.12);
+  --toggle-track-border: rgba(255, 255, 255, 0.15);
+  --toggle-thumb-bg: #1e293b;
+  --toggle-thumb-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --toggle-icon-color: #a5b4fc;
+  --toggle-text-color: #d1d5db;
+
+  color-scheme: dark;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--bg-app);
+  color: var(--text-secondary);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  margin: 32px 0;
+}
+
+h2 {
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  margin: 0 0 8px;
+}
+
+p {
+  margin: 0;
+}
