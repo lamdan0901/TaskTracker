@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using TaskTracker.Api.Data;
 using TaskTracker.Api.Common;
+using Microsoft.EntityFrameworkCore;
 
 namespace TaskTracker.Api.Features.Tasks;
 
@@ -39,7 +40,9 @@ public static class UpdateTask
     {
         // FindAsync returns a TRACKED entity, unlike the AsNoTracking() read in
         // ListTasks — that tracking is what lets SaveChangesAsync see the mutations.
-        var task = await db.Tasks.FindAsync([id], ct);
+        var task = await db.Tasks
+           .Include(t => t.Tags)
+           .FirstOrDefaultAsync(t => t.Id == id, ct);
         if (task is null) return Results.NotFound();
 
         if (req.CategoryId is not null)

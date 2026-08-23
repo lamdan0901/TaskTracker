@@ -22,6 +22,14 @@ export type TagItem = {
   createdAt: string;
 };
 
+export type SubtaskItem = {
+  id: number;
+  title: string;
+  isDone: boolean;
+  createdAt: string;
+  taskId?: number;
+};
+
 export type TaskItem = {
   id: number;
   title: string;
@@ -30,6 +38,7 @@ export type TaskItem = {
   categoryId: number | null;
   category: CategorySummary | null;
   tags: TagSummary[];
+  subtasks?: SubtaskItem[];
 };
 
 export type PagedResult = {

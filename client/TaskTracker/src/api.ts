@@ -1,4 +1,4 @@
-import type { CategoryItem, PagedResult, QueryState, TagItem, TaskItem } from "./types";
+import type { CategoryItem, PagedResult, QueryState, SubtaskItem, TagItem, TaskItem } from "./types";
 
 export const PAGE_SIZE = 5;
 
@@ -201,6 +201,55 @@ export async function deleteTag(tagId: number): Promise<void> {
   });
   if (!response.ok) {
     await handleApiError(response, "Failed to delete tag");
+  }
+}
+
+export async function fetchSubtasks(taskId: number): Promise<SubtaskItem[]> {
+  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}/subtasks`));
+  if (!response.ok) {
+    await handleApiError(response, "Failed to load subtasks");
+  }
+
+  const data = (await response.json()) as SubtaskItem[];
+  if (!Array.isArray(data)) {
+    throw new Error("Unexpected subtasks response shape from API");
+  }
+  return data;
+}
+
+export async function createSubtask(taskId: number, title: string): Promise<SubtaskItem> {
+  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}/subtasks`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!response.ok) {
+    await handleApiError(response, "Failed to create subtask");
+  }
+  return (await response.json()) as SubtaskItem;
+}
+
+export async function updateSubtask(
+  taskId: number,
+  subtaskId: number,
+  body: { title?: string; isDone?: boolean },
+): Promise<void> {
+  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}/subtasks/${subtaskId}`), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    await handleApiError(response, "Failed to update subtask");
+  }
+}
+
+export async function deleteSubtask(taskId: number, subtaskId: number): Promise<void> {
+  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}/subtasks/${subtaskId}`), {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    await handleApiError(response, "Failed to delete subtask");
   }
 }
 

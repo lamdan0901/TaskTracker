@@ -40,6 +40,14 @@ function TaskRow({
           >
             <strong className="task-title-text">{task.title}</strong>
           </button>
+          {task.subtasks && task.subtasks.length > 0 ? (
+            <span
+              className="task-subtasks-pill"
+              title={`${task.subtasks.filter((s) => s.isDone).length} of ${task.subtasks.length} subtasks completed`}
+            >
+              ☑ {task.subtasks.filter((s) => s.isDone).length}/{task.subtasks.length}
+            </span>
+          ) : null}
         </div>
       </td>
 

@@ -1,3 +1,5 @@
+using TaskTracker.Api.Features.Tasks.Subtasks;
+
 namespace TaskTracker.Api.Features.Tasks;
 
 /// <summary>
@@ -17,5 +19,7 @@ public static class TaskEndpoints
         UpdateTask.Map(app);
         MarkAllTasks.Map(app);
         DeleteTask.Map(app);
+
+        app.MapSubtaskEndpoints();
     }
 }

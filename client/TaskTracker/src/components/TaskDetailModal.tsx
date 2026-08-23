@@ -1,6 +1,6 @@
-import { memo, useCallback, useEffect, useState } from "react";
-import { fetchTask, toErrorMessage } from "../api";
-import type { CategoryItem, TagItem, TaskItem } from "../types";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { createSubtask, deleteSubtask, fetchSubtasks, fetchTask, toErrorMessage, updateSubtask } from "../api";
+import type { CategoryItem, SubtaskItem, TagItem, TaskItem } from "../types";
 
 type TaskDetailModalProps = {
   taskId: number | null;
@@ -39,6 +39,12 @@ function TaskDetailModal({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Subtask local states (no API calls until "Save Changes")
+  const [subtasks, setSubtasks] = useState<SubtaskItem[]>([]);
+  const [deletedSubtaskIds, setDeletedSubtaskIds] = useState<number[]>([]);
+  const initialSubtasksRef = useRef<SubtaskItem[]>([]);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+
   // Form states
   const [title, setTitle] = useState("");
   const [isDone, setIsDone] = useState(false);
@@ -55,6 +61,11 @@ function TaskDetailModal({
       setIsDone(data.isDone);
       setCategoryId(data.categoryId);
       setSelectedTagIds(data.tags ? data.tags.map((t) => t.id) : []);
+
+      const initialSubs = data.subtasks ?? (await fetchSubtasks(id));
+      setSubtasks(initialSubs);
+      initialSubtasksRef.current = initialSubs;
+      setDeletedSubtaskIds([]);
     } catch (err) {
       setError(toErrorMessage(err, "Failed to load task details"));
     } finally {
@@ -68,6 +79,9 @@ function TaskDetailModal({
     } else {
       setTask(null);
       setError(null);
+      setSubtasks([]);
+      setDeletedSubtaskIds([]);
+      initialSubtasksRef.current = [];
     }
   }, [isOpen, taskId, loadTaskDetail]);
 
@@ -91,6 +105,40 @@ function TaskDetailModal({
     );
   }
 
+  // Purely local: add subtask to working array without making an API call
+  function handleAddSubtask(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = newSubtaskTitle.trim();
+    if (!trimmed) return;
+
+    const tempId = -Date.now() - Math.floor(Math.random() * 1000);
+    const newSubtask: SubtaskItem = {
+      id: tempId,
+      title: trimmed,
+      isDone: false,
+      createdAt: new Date().toISOString(),
+      taskId: taskId ?? 0,
+    };
+
+    setSubtasks((prev) => [...prev, newSubtask]);
+    setNewSubtaskTitle("");
+  }
+
+  // Purely local: toggle subtask isDone in working array without making an API call
+  function handleToggleSubtask(subtaskId: number) {
+    setSubtasks((prev) =>
+      prev.map((s) => (s.id === subtaskId ? { ...s, isDone: !s.isDone } : s)),
+    );
+  }
+
+  // Purely local: remove subtask from working array and track for deletion on save
+  function handleDeleteSubtask(subtaskId: number) {
+    if (subtaskId > 0) {
+      setDeletedSubtaskIds((prev) => [...prev, subtaskId]);
+    }
+    setSubtasks((prev) => prev.filter((s) => s.id !== subtaskId));
+  }
+
   async function handleSave(event: React.FormEvent) {
     event.preventDefault();
     if (!task) return;
@@ -105,17 +153,47 @@ function TaskDetailModal({
     setError(null);
 
     try {
+      // 1. Reconcile subtask changes in batch FIRST so DB has latest subtasks
+      const deletePromises = deletedSubtaskIds.map((id) =>
+        deleteSubtask(task.id, id),
+      );
+
+      const createPromises = subtasks
+        .filter((s) => s.id < 0)
+        .map(async (s) => {
+          const created = await createSubtask(task.id, s.title);
+          if (s.isDone) {
+            await updateSubtask(task.id, created.id, { isDone: true });
+          }
+        });
+
+      const updatePromises = subtasks
+        .filter((s) => s.id > 0)
+        .map(async (s) => {
+          const original = initialSubtasksRef.current.find((o) => o.id === s.id);
+          if (original && (original.title !== s.title || original.isDone !== s.isDone)) {
+            await updateSubtask(task.id, s.id, {
+              title: s.title,
+              isDone: s.isDone,
+            });
+          }
+        });
+
+      await Promise.all([...deletePromises, ...createPromises, ...updatePromises]);
+
+      // 2. Save main task attributes (which calls loadTasks() in App.tsx with fresh DB subtasks)
       const success = await onSaveTask(task, {
         title: trimmedTitle,
         isDone,
         categoryId,
         tagIds: selectedTagIds,
       });
+
       if (success) {
         onClose();
       }
     } catch (err) {
-      setError(toErrorMessage(err, "Failed to update task"));
+      setError(toErrorMessage(err, "Failed to save task and subtask changes"));
     } finally {
       setSaving(false);
     }
@@ -315,6 +393,99 @@ function TaskDetailModal({
                       </button>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* Subtasks / Checklist Section */}
+            <div className="form-group subtasks-form-group">
+              <div className="form-label-row">
+                <div className="subtask-header-title">
+                  <span className="form-label">Subtasks &amp; Checklist</span>
+                  {subtasks.length > 0 ? (
+                    <span className="subtasks-count-pill">
+                      {subtasks.filter((s) => s.isDone).length} / {subtasks.length} done
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {subtasks.length > 0 ? (
+                <div className="subtasks-progress-wrap">
+                  <div
+                    className="subtasks-progress-bar"
+                    style={{
+                      width: `${Math.round(
+                        (subtasks.filter((s) => s.isDone).length / subtasks.length) * 100,
+                      )}%`,
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              {/* Add Subtask Input Form */}
+              <div className="subtask-add-row">
+                <input
+                  type="text"
+                  className="subtask-add-input"
+                  placeholder="Add a checklist item (e.g. 'Draft outline')..."
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddSubtask(e);
+                    }
+                  }}
+                  disabled={saving || deleting}
+                  maxLength={200}
+                />
+                <button
+                  type="button"
+                  className="subtask-add-btn"
+                  onClick={handleAddSubtask}
+                  disabled={saving || deleting || !newSubtaskTitle.trim()}
+                >
+                  + Add
+                </button>
+              </div>
+
+              {/* Subtask Items List */}
+              {subtasks.length === 0 ? (
+                <div className="subtasks-empty-state">
+                  No subtasks yet. Break this task into smaller steps above!
+                </div>
+              ) : (
+                <div className="subtasks-list">
+                  {subtasks.map((subtask) => (
+                    <div
+                      key={subtask.id}
+                      className={`subtask-item ${subtask.isDone ? "subtask-done" : ""}`}
+                    >
+                      <label className="subtask-checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={subtask.isDone}
+                          onChange={() => handleToggleSubtask(subtask.id)}
+                          disabled={saving || deleting}
+                          aria-label={`Mark subtask "${subtask.title}" as ${
+                            subtask.isDone ? "incomplete" : "complete"
+                          }`}
+                        />
+                        <span className="subtask-title-text">{subtask.title}</span>
+                      </label>
+                      <button
+                        type="button"
+                        className="subtask-delete-btn"
+                        onClick={() => handleDeleteSubtask(subtask.id)}
+                        disabled={saving || deleting}
+                        title="Delete subtask"
+                        aria-label={`Delete subtask ${subtask.title}`}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

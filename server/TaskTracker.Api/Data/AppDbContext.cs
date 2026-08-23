@@ -9,8 +9,8 @@ public class AppDbContext : DbContext
 
   public DbSet<TaskItem> Tasks => Set<TaskItem>();
   public DbSet<Category> Categories => Set<Category>();
-
   public DbSet<Tag> Tags => Set<Tag>();
+  public DbSet<Subtask> Subtasks => Set<Subtask>();
 
   // EF calls this once, at startup, while building its model of your schema.
   // Everything configured here feeds both the migration generator and the

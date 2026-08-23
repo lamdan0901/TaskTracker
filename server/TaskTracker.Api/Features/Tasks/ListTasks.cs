@@ -132,7 +132,8 @@ public static class ListTasks
             t.CreatedAt,
             t.CategoryId,
             t.Category == null ? null : new CategorySummaryDto(t.Category.Id, t.Category.Name),
-            t.Tags.OrderBy(tag => tag.Name).Select(tag => new TagSummaryDto(tag.Id, tag.Name)).ToList()
+            t.Tags.OrderBy(tag => tag.Name).Select(tag => new TagSummaryDto(tag.Id, tag.Name)).ToList(),
+            t.Subtasks.OrderBy(s => s.CreatedAt).Select(s => new SubtaskSummaryDto(s.Id, s.Title, s.IsDone, s.CreatedAt)).ToList()
         ))
         .ToListAsync(ct);
 
