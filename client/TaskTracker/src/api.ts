@@ -1,4 +1,4 @@
-import type { CategoryItem, PagedResult, QueryState } from "./types";
+import type { CategoryItem, PagedResult, QueryState, TagItem, TaskItem } from "./types";
 
 export const PAGE_SIZE = 5;
 
@@ -9,6 +9,7 @@ export function defaultQuery(): QueryState {
     search: "",
     isDone: "",
     categoryId: null,
+    tagId: null,
     sortBy: null,
     sortDir: "desc",
     pageIndex: 0,
@@ -49,6 +50,7 @@ export async function fetchTasks(query: QueryState): Promise<PagedResult> {
   if (query.search) params.set("search", query.search);
   if (query.isDone !== "") params.set("isDone", query.isDone);
   if (query.categoryId !== null) params.set("categoryId", String(query.categoryId));
+  if (query.tagId !== null) params.set("tagId", String(query.tagId));
   if (query.sortBy !== null) {
     params.set("sortBy", query.sortBy);
     params.set("sortDir", query.sortDir);
@@ -68,9 +70,18 @@ export async function fetchTasks(query: QueryState): Promise<PagedResult> {
   return data;
 }
 
+export async function fetchTask(taskId: number): Promise<TaskItem> {
+  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}`));
+  if (!response.ok) {
+    await handleApiError(response, "Failed to load task details");
+  }
+  return (await response.json()) as TaskItem;
+}
+
 export async function createTask(
   title: string,
   categoryId?: number | null,
+  tagIds?: number[],
 ): Promise<void> {
   const response = await fetch(buildApiUrl("/api/tasks"), {
     method: "POST",
@@ -78,6 +89,7 @@ export async function createTask(
     body: JSON.stringify({
       title,
       categoryId: categoryId ?? null,
+      tagIds: tagIds ?? null,
     }),
   });
   if (!response.ok) {
@@ -87,7 +99,12 @@ export async function createTask(
 
 export async function updateTask(
   taskId: number,
-  body: { title?: string; isDone?: boolean; categoryId?: number | null },
+  body: {
+    title?: string;
+    isDone?: boolean;
+    categoryId?: number | null;
+    tagIds?: number[];
+  },
 ): Promise<void> {
   const response = await fetch(buildApiUrl(`/api/tasks/${taskId}`), {
     method: "PUT",
@@ -150,6 +167,40 @@ export async function deleteCategory(categoryId: number): Promise<void> {
   });
   if (!response.ok) {
     await handleApiError(response, "Failed to delete category");
+  }
+}
+
+export async function fetchTags(): Promise<TagItem[]> {
+  const response = await fetch(buildApiUrl("/api/tags"));
+  if (!response.ok) {
+    await handleApiError(response, "Failed to load tags");
+  }
+
+  const data = (await response.json()) as TagItem[];
+  if (!Array.isArray(data)) {
+    throw new Error("Unexpected tags response shape from API");
+  }
+  return data;
+}
+
+export async function createTag(name: string): Promise<TagItem> {
+  const response = await fetch(buildApiUrl("/api/tags"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) {
+    await handleApiError(response, "Failed to create tag");
+  }
+  return (await response.json()) as TagItem;
+}
+
+export async function deleteTag(tagId: number): Promise<void> {
+  const response = await fetch(buildApiUrl(`/api/tags/${tagId}`), {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    await handleApiError(response, "Failed to delete tag");
   }
 }
 

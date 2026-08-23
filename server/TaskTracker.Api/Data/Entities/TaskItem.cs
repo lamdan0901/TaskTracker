@@ -12,4 +12,6 @@ public class TaskItem
 
   // Ref Navigation Property: points to the Category entity
   public Category? Category { get; set; }
+
+  public List<Tag> Tags { get; set; } = [];
 }

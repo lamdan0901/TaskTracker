@@ -3,7 +3,19 @@ export type CategorySummary = {
   name: string;
 };
 
+export type TagSummary = {
+  id: number;
+  name: string;
+};
+
 export type CategoryItem = {
+  id: number;
+  name: string;
+  taskCount: number;
+  createdAt: string;
+};
+
+export type TagItem = {
   id: number;
   name: string;
   taskCount: number;
@@ -17,6 +29,7 @@ export type TaskItem = {
   createdAt: string;
   categoryId: number | null;
   category: CategorySummary | null;
+  tags: TagSummary[];
 };
 
 export type PagedResult = {
@@ -34,6 +47,7 @@ export type QueryState = {
   search: string;
   isDone: DoneFilter;
   categoryId: number | null;
+  tagId: number | null;
   sortBy: SortKey | null;
   sortDir: SortDir;
   pageIndex: number;

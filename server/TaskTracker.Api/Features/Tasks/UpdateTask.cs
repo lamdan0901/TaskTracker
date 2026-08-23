@@ -12,11 +12,12 @@ namespace TaskTracker.Api.Features.Tasks;
 public sealed record TaskUpdateRequest(
     [MaxLength(200)] string? Title,
     bool? IsDone,
-    int? CategoryId) : IValidatableObject
+    int? CategoryId,
+    List<int>? TagIds = null) : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext ctx)
     {
-        if (Title is null && IsDone is null && CategoryId is null)
+        if ((Title, IsDone, CategoryId, TagIds) is (null, null, null, null))
             yield return new ValidationResult("At least one field must be provided.");
 
         // Distinguish absent (null, fine) from present-but-blank (rejected).
@@ -48,6 +49,16 @@ public static class UpdateTask
                 return errorResult;
             }
             task.CategoryId = req.CategoryId.Value;
+        }
+
+        if (req.TagIds is not null)
+        {
+            var (tagError, tags) = await db.ValidateTagsExistAsync(req.TagIds, ct);
+            if (tagError is not null)
+            {
+                return tagError;
+            }
+            task.Tags = tags;
         }
 
         // Shape validation already passed. Only the "does it exist" check is left,

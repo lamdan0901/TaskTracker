@@ -14,10 +14,10 @@ public sealed record TaskQueryRequest
 {
     [MaxLength(100)]
     public string? Search { get; init; }
-
     public bool? IsDone { get; init; }
-
     public int? CategoryId { get; init; }
+    public int? TagId { get; init; }
+    public string? Tag { get; init; }
 
     // AllowedValues (.NET 8+) replaces the hand-rolled switch this record used to
     // carry in Validate(). Every one of these attributes treats null as "not
@@ -83,6 +83,12 @@ public static class ListTasks
         // Filter by categoryId if any
         if (q.CategoryId is int categoryId) query = query.Where(t => t.CategoryId == categoryId);
 
+        // Filter by tagid if provided
+        if (q.TagId is int tagId) query = query.Where(t => t.Tags.Any(tag => tag.Id == tagId));
+
+        // Filter by tagname if provided
+        if (!string.IsNullOrWhiteSpace(q.Tag)) query = query.Where(t => t.Tags.Any(tag => tag.Name == q.Tag));
+
         // 5. Count the filtered set BEFORE paging, so totalCount tells the client
         //    how many rows match their filters — not how many are on this page.
         //    This is a separate round-trip (SELECT COUNT(*)) against the same filters.
@@ -125,7 +131,8 @@ public static class ListTasks
             t.IsDone,
             t.CreatedAt,
             t.CategoryId,
-            t.Category == null ? null : new CategorySummaryDto(t.Category.Id, t.Category.Name)
+            t.Category == null ? null : new CategorySummaryDto(t.Category.Id, t.Category.Name),
+            t.Tags.OrderBy(tag => tag.Name).Select(tag => new TagSummaryDto(tag.Id, tag.Name)).ToList()
         ))
         .ToListAsync(ct);
 

@@ -1,52 +1,21 @@
-import { memo, useRef, useState } from "react";
-import type { CategoryItem, TaskItem } from "../types";
+import { memo } from "react";
+import type { TaskItem } from "../types";
 
 type TaskRowProps = {
   task: TaskItem;
-  categories: CategoryItem[];
   busy: boolean;
   onToggle: (task: TaskItem) => void;
   onDelete: (taskId: number) => void;
-  onSaveTask: (
-    task: TaskItem,
-    updates: { title: string; categoryId: number | null },
-  ) => Promise<boolean>;
+  onSelect: (taskId: number) => void;
 };
 
 function TaskRow({
   task,
-  categories,
   busy,
   onToggle,
   onDelete,
-  onSaveTask,
+  onSelect,
 }: TaskRowProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  function startEditing() {
-    setEditTitle(task.title);
-    setEditCategoryId(task.categoryId ?? null);
-    setIsEditing(true);
-    inputRef.current?.focus();
-  }
-
-  function cancelEditing() {
-    setIsEditing(false);
-  }
-
-  async function handleSave() {
-    const saved = await onSaveTask(task, {
-      title: editTitle.trim(),
-      categoryId: editCategoryId,
-    });
-    if (saved) {
-      setIsEditing(false);
-    }
-  }
-
   const createdAt = new Date(task.createdAt);
 
   return (
@@ -62,63 +31,16 @@ function TaskRow({
       </td>
 
       <td className="col-title">
-        {isEditing ? (
-          <div className="task-edit-row">
-            <input
-              ref={inputRef}
-              type="text"
-              value={editTitle}
-              onChange={(event) => setEditTitle(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") void handleSave();
-                if (event.key === "Escape") cancelEditing();
-              }}
-              autoComplete="off"
-              autoFocus
-              placeholder="Task title"
-            />
-            <div className="task-edit-category-row">
-              <select
-                value={editCategoryId ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setEditCategoryId(val === "" ? null : Number(val));
-                }}
-                className="task-edit-category-select"
-                aria-label="Category for task"
-              >
-                <option value="">No category</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="task-edit-actions">
-              <button
-                type="button"
-                className="edit-button edit-button-primary"
-                onClick={() => void handleSave()}
-                disabled={busy || !editTitle.trim()}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                className="edit-button edit-button-secondary"
-                onClick={cancelEditing}
-                disabled={busy}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="task-title-wrap">
+        <div className="task-title-wrap">
+          <button
+            type="button"
+            className="task-title-button"
+            onClick={() => onSelect(task.id)}
+            title="Click to view and edit details"
+          >
             <strong className="task-title-text">{task.title}</strong>
-          </div>
-        )}
+          </button>
+        </div>
       </td>
 
       <td className="col-category">
@@ -128,6 +50,20 @@ function TaskRow({
           </span>
         ) : (
           <span className="task-no-category">—</span>
+        )}
+      </td>
+
+      <td className="col-tags">
+        {task.tags && task.tags.length > 0 ? (
+          <div className="task-tags-list">
+            {task.tags.map((tag) => (
+              <span key={tag.id} className="task-tag-pill" title={`Tag: #${tag.name}`}>
+                #{tag.name}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="task-no-tags">—</span>
         )}
       </td>
 
@@ -141,10 +77,10 @@ function TaskRow({
           <button
             type="button"
             className="link-button"
-            onClick={startEditing}
-            disabled={busy || isEditing}
+            onClick={() => onSelect(task.id)}
+            disabled={busy}
           >
-            Edit
+            Details
           </button>
           <button
             type="button"

@@ -1,24 +1,30 @@
 import { memo, useState } from "react";
-import type { CategoryItem, DoneFilter, QueryState } from "../types";
+import type { CategoryItem, DoneFilter, QueryState, TagItem } from "../types";
 
 type TaskToolbarProps = {
   query: QueryState;
   categories: CategoryItem[];
+  tags: TagItem[];
   onSearch: (search: string) => void;
   onClearSearch: () => void;
   onFilterChange: (isDone: DoneFilter) => void;
   onCategoryFilterChange: (categoryId: number | null) => void;
+  onTagFilterChange: (tagId: number | null) => void;
   onOpenCategoryManager: () => void;
+  onOpenTagManager: () => void;
 };
 
 function TaskToolbar({
   query,
   categories,
+  tags,
   onSearch,
   onClearSearch,
   onFilterChange,
   onCategoryFilterChange,
+  onTagFilterChange,
   onOpenCategoryManager,
+  onOpenTagManager,
 }: TaskToolbarProps) {
   const [searchInput, setSearchInput] = useState("");
 
@@ -71,6 +77,25 @@ function TaskToolbar({
       </label>
 
       <label className="toolbar-field">
+        <span>Tag</span>
+        <select
+          value={query.tagId ?? ""}
+          onChange={(event) => {
+            const val = event.target.value;
+            onTagFilterChange(val === "" ? null : Number(val));
+          }}
+          aria-label="Filter tasks by tag"
+        >
+          <option value="">All Tags</option>
+          {tags.map((tag) => (
+            <option key={tag.id} value={tag.id}>
+              #{tag.name} ({tag.taskCount})
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="toolbar-field">
         <span>Status</span>
         <select
           value={query.isDone}
@@ -94,6 +119,15 @@ function TaskToolbar({
         >
           <span>🏷️ Categories</span>
           <span className="category-counter-badge">{categories.length}</span>
+        </button>
+        <button
+          type="button"
+          className="toolbar-tag-btn"
+          onClick={onOpenTagManager}
+          title="Create or delete tags"
+        >
+          <span>🔖 Tags</span>
+          <span className="tag-counter-badge">{tags.length}</span>
         </button>
       </div>
     </div>

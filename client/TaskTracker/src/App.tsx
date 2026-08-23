@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   PAGE_SIZE,
   createCategory,
+  createTag,
   createTask,
   defaultQuery,
   deleteCategory,
+  deleteTag,
   deleteTask,
   fetchCategories,
+  fetchTags,
   fetchTasks,
   toErrorMessage,
   toggleAllTasks,
@@ -15,11 +18,13 @@ import {
 import CategoryManager from "./components/CategoryManager";
 import Hero from "./components/Hero";
 import Pagination from "./components/Pagination";
+import TagManager from "./components/TagManager";
+import TaskDetailModal from "./components/TaskDetailModal";
 import TaskForm from "./components/TaskForm";
 import TaskTable from "./components/TaskTable";
 import TaskToolbar from "./components/TaskToolbar";
 import { useTheme } from "./hooks/useTheme";
-import type { CategoryItem, DoneFilter, QueryState, SortKey, TaskItem } from "./types";
+import type { CategoryItem, DoneFilter, QueryState, SortKey, TagItem, TaskItem } from "./types";
 import "./App.css";
 
 function App() {
@@ -27,13 +32,19 @@ function App() {
   const [query, setQuery] = useState<QueryState>(defaultQuery);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [tags, setTags] = useState<TagItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(false);
+  const [loadingTags, setLoadingTags] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyTaskId, setBusyTaskId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Modals state
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const completedCount = useMemo(
@@ -42,7 +53,10 @@ function App() {
   );
   const remainingCount = tasks.length - completedCount;
   const hasActiveFilters =
-    query.search !== "" || query.isDone !== "" || query.categoryId !== null;
+    query.search !== "" ||
+    query.isDone !== "" ||
+    query.categoryId !== null ||
+    query.tagId !== null;
   const allSelected =
     tasks.length > 0 &&
     completedCount === tasks.length &&
@@ -81,6 +95,20 @@ function App() {
     }
   }, []);
 
+  const loadTags = useCallback(async (): Promise<boolean> => {
+    setLoadingTags(true);
+    try {
+      const data = await fetchTags();
+      setTags(data);
+      return true;
+    } catch (loadError) {
+      setError(toErrorMessage(loadError, "Failed to load tags"));
+      return false;
+    } finally {
+      setLoadingTags(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadTasks();
   }, [loadTasks]);
@@ -88,6 +116,10 @@ function App() {
   useEffect(() => {
     void loadCategories();
   }, [loadCategories]);
+
+  useEffect(() => {
+    void loadTags();
+  }, [loadTags]);
 
   useEffect(() => {
     if (totalCount > 0 && query.pageIndex >= totalPages) {
@@ -112,6 +144,10 @@ function App() {
 
   const handleCategoryFilterChange = useCallback((categoryId: number | null) => {
     setQuery((current) => ({ ...current, categoryId, pageIndex: 0 }));
+  }, []);
+
+  const handleTagFilterChange = useCallback((tagId: number | null) => {
+    setQuery((current) => ({ ...current, tagId, pageIndex: 0 }));
   }, []);
 
   const handlePageChange = useCallback((pageIndex: number) => {
@@ -145,7 +181,7 @@ function App() {
       void createTask(title, categoryId)
         .then(() => {
           setQuery(defaultQuery());
-          void loadCategories();
+          void Promise.all([loadCategories(), loadTags()]);
         })
         .catch((createError) => {
           setError(toErrorMessage(createError, "Failed to create task"));
@@ -156,7 +192,7 @@ function App() {
 
       return true;
     },
-    [loadCategories],
+    [loadCategories, loadTags],
   );
 
   const handleToggle = useCallback(
@@ -193,10 +229,15 @@ function App() {
     [loadTasks],
   );
 
-  const handleSaveTask = useCallback(
+  const handleSaveTaskDetail = useCallback(
     async (
       task: TaskItem,
-      updates: { title: string; categoryId: number | null },
+      updates: {
+        title: string;
+        isDone: boolean;
+        categoryId: number | null;
+        tagIds: number[];
+      },
     ): Promise<boolean> => {
       if (!updates.title) {
         setError("Title cannot be empty.");
@@ -209,9 +250,11 @@ function App() {
       try {
         await updateTask(task.id, {
           title: updates.title,
+          isDone: updates.isDone,
           categoryId: updates.categoryId,
+          tagIds: updates.tagIds,
         });
-        await Promise.all([loadTasks(), loadCategories()]);
+        await Promise.all([loadTasks(), loadCategories(), loadTags()]);
         return true;
       } catch (saveError) {
         setError(toErrorMessage(saveError, "Failed to update task"));
@@ -220,7 +263,7 @@ function App() {
         setBusyTaskId(null);
       }
     },
-    [loadTasks, loadCategories],
+    [loadTasks, loadCategories, loadTags],
   );
 
   const handleDelete = useCallback(
@@ -230,14 +273,17 @@ function App() {
 
       try {
         await deleteTask(taskId);
-        await Promise.all([loadTasks(), loadCategories()]);
+        if (selectedTaskId === taskId) {
+          setSelectedTaskId(null);
+        }
+        await Promise.all([loadTasks(), loadCategories(), loadTags()]);
       } catch (deleteError) {
         setError(toErrorMessage(deleteError, "Failed to delete task"));
       } finally {
         setBusyTaskId(null);
       }
     },
-    [loadTasks, loadCategories],
+    [selectedTaskId, loadTasks, loadCategories, loadTags],
   );
 
   const handleCreateCategory = useCallback(
@@ -261,6 +307,27 @@ function App() {
     [query.categoryId, loadCategories, loadTasks],
   );
 
+  const handleCreateTag = useCallback(
+    async (tagName: string): Promise<boolean> => {
+      await createTag(tagName);
+      await loadTags();
+      return true;
+    },
+    [loadTags],
+  );
+
+  const handleDeleteTag = useCallback(
+    async (tagId: number): Promise<boolean> => {
+      await deleteTag(tagId);
+      if (query.tagId === tagId) {
+        setQuery((curr) => ({ ...curr, tagId: null, pageIndex: 0 }));
+      }
+      await Promise.all([loadTags(), loadTasks()]);
+      return true;
+    },
+    [query.tagId, loadTags, loadTasks],
+  );
+
   return (
     <main className="app-shell">
       <Hero
@@ -281,11 +348,14 @@ function App() {
         <TaskToolbar
           query={query}
           categories={categories}
+          tags={tags}
           onSearch={handleSearch}
           onClearSearch={handleClearSearch}
           onFilterChange={handleFilterChange}
           onCategoryFilterChange={handleCategoryFilterChange}
+          onTagFilterChange={handleTagFilterChange}
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
+          onOpenTagManager={() => setIsTagManagerOpen(true)}
         />
 
         {error ? (
@@ -302,6 +372,7 @@ function App() {
             onClick={() => {
               void loadTasks();
               void loadCategories();
+              void loadTags();
             }}
           >
             Refresh
@@ -319,7 +390,6 @@ function App() {
         ) : (
           <TaskTable
             tasks={tasks}
-            categories={categories}
             query={query}
             busyTaskId={busyTaskId}
             saving={saving}
@@ -328,7 +398,7 @@ function App() {
             onSort={handleSort}
             onToggle={handleToggle}
             onDelete={handleDelete}
-            onSaveTask={handleSaveTask}
+            onSelectTask={(id) => setSelectedTaskId(id)}
           />
         )}
 
@@ -342,6 +412,18 @@ function App() {
         />
       </section>
 
+      <TaskDetailModal
+        taskId={selectedTaskId}
+        categories={categories}
+        tags={tags}
+        isOpen={selectedTaskId !== null}
+        onClose={() => setSelectedTaskId(null)}
+        onSaveTask={handleSaveTaskDetail}
+        onDeleteTask={handleDelete}
+        onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
+        onOpenTagManager={() => setIsTagManagerOpen(true)}
+      />
+
       <CategoryManager
         isOpen={isCategoryManagerOpen}
         categories={categories}
@@ -350,8 +432,18 @@ function App() {
         onCreateCategory={handleCreateCategory}
         onDeleteCategory={handleDeleteCategory}
       />
+
+      <TagManager
+        isOpen={isTagManagerOpen}
+        tags={tags}
+        loading={loadingTags}
+        onClose={() => setIsTagManagerOpen(false)}
+        onCreateTag={handleCreateTag}
+        onDeleteTag={handleDeleteTag}
+      />
     </main>
   );
 }
 
 export default App;
+

@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+
 using TaskTracker.Api.Data;
 using TaskTracker.Api.Common;
+
 using TaskTracker.Api.Features.Tasks;
 using TaskTracker.Api.Features.Categories;
+using TaskTracker.Api.Features.Tags;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,5 +48,6 @@ app.UseHttpsRedirection();
 // Endpoints — one line per feature slice.
 app.MapTaskEndpoints();
 app.MapCategoryEndpoints();
+app.MapTagEndpoints();
 
 app.Run();

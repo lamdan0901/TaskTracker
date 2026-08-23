@@ -1,10 +1,9 @@
 import { memo } from "react";
-import type { CategoryItem, QueryState, SortKey, TaskItem } from "../types";
+import type { QueryState, SortKey, TaskItem } from "../types";
 import TaskRow from "./TaskRow";
 
 type TaskTableProps = {
   tasks: TaskItem[];
-  categories: CategoryItem[];
   query: QueryState;
   busyTaskId: number | null;
   saving: boolean;
@@ -13,10 +12,7 @@ type TaskTableProps = {
   onSort: (column: Exclude<SortKey, "isDone">) => void;
   onToggle: (task: TaskItem) => void;
   onDelete: (taskId: number) => void;
-  onSaveTask: (
-    task: TaskItem,
-    updates: { title: string; categoryId: number | null },
-  ) => Promise<boolean>;
+  onSelectTask: (taskId: number) => void;
 };
 
 function SortHeaderButton({
@@ -53,7 +49,6 @@ function ariaSort(query: QueryState, column: SortKey): "ascending" | "descending
 
 function TaskTable({
   tasks,
-  categories,
   query,
   busyTaskId,
   saving,
@@ -62,7 +57,7 @@ function TaskTable({
   onSort,
   onToggle,
   onDelete,
-  onSaveTask,
+  onSelectTask,
 }: TaskTableProps) {
   return (
     <table className="task-table">
@@ -93,6 +88,7 @@ function TaskTable({
             />
           </th>
           <th className="col-category">Category</th>
+          <th className="col-tags">Tags</th>
           <th className="col-created" aria-sort={ariaSort(query, "createdAt")}>
             <SortHeaderButton
               label="Created"
@@ -109,11 +105,10 @@ function TaskTable({
           <TaskRow
             key={task.id}
             task={task}
-            categories={categories}
             busy={busyTaskId === task.id}
             onToggle={onToggle}
             onDelete={onDelete}
-            onSaveTask={onSaveTask}
+            onSelect={onSelectTask}
           />
         ))}
       </tbody>

@@ -1,23 +1,23 @@
 import { memo, useEffect, useRef, useState } from "react";
-import type { CategoryItem } from "../types";
+import type { TagItem } from "../types";
 
-type CategoryManagerProps = {
+type TagManagerProps = {
   isOpen: boolean;
-  categories: CategoryItem[];
+  tags: TagItem[];
   loading: boolean;
   onClose: () => void;
-  onCreateCategory: (name: string) => Promise<boolean>;
-  onDeleteCategory: (id: number) => Promise<boolean>;
+  onCreateTag: (name: string) => Promise<boolean>;
+  onDeleteTag: (id: number) => Promise<boolean>;
 };
 
-function CategoryManager({
+function TagManager({
   isOpen,
-  categories,
+  tags,
   loading,
   onClose,
-  onCreateCategory,
-  onDeleteCategory,
-}: CategoryManagerProps) {
+  onCreateTag,
+  onDeleteTag,
+}: TagManagerProps) {
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -28,7 +28,6 @@ function CategoryManager({
     if (isOpen) {
       setError(null);
       setName("");
-      // Small timeout to ensure DOM is rendered before focusing
       const timer = setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
@@ -52,7 +51,7 @@ function CategoryManager({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Category name is required.");
+      setError("Tag name is required.");
       return;
     }
 
@@ -60,22 +59,22 @@ function CategoryManager({
     setError(null);
 
     try {
-      const success = await onCreateCategory(trimmed);
+      const success = await onCreateTag(trimmed);
       if (success) {
         setName("");
         inputRef.current?.focus();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create category");
+      setError(err instanceof Error ? err.message : "Failed to create tag");
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleDelete(id: number, catName: string) {
+  async function handleDelete(id: number, tagName: string) {
     if (
       !window.confirm(
-        `Are you sure you want to delete category "${catName}"? Tasks in this category will become uncategorized.`,
+        `Are you sure you want to delete tag "${tagName}"? It will be removed from all tasks.`,
       )
     ) {
       return;
@@ -84,9 +83,9 @@ function CategoryManager({
     setDeletingId(id);
     setError(null);
     try {
-      await onDeleteCategory(id);
+      await onDeleteTag(id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete category");
+      setError(err instanceof Error ? err.message : "Failed to delete tag");
     } finally {
       setDeletingId(null);
     }
@@ -100,14 +99,14 @@ function CategoryManager({
       }}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="category-manager-title"
+      aria-labelledby="tag-manager-title"
     >
       <div className="modal-content">
         <div className="modal-header">
           <div>
-            <h3 id="category-manager-title">Manage Categories</h3>
+            <h3 id="tag-manager-title">Manage Tags</h3>
             <p className="modal-subtitle">
-              Organize your tasks by creating or deleting categories.
+              Organize your tasks with custom tags across projects.
             </p>
           </div>
           <button
@@ -133,46 +132,46 @@ function CategoryManager({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Work, Personal, Urgent"
+              placeholder="e.g. urgent, backend, bug, v1"
               maxLength={50}
               disabled={submitting}
               autoComplete="off"
             />
             <button
               type="submit"
-              className="category-add-button"
+              className="tag-add-button"
               disabled={submitting || !name.trim()}
             >
-              {submitting ? "Adding..." : "Add Category"}
+              {submitting ? "Adding..." : "Add Tag"}
             </button>
           </div>
         </form>
 
         <div className="category-list-section">
-          <h4>Existing Categories ({categories.length})</h4>
+          <h4>Existing Tags ({tags.length})</h4>
           {loading ? (
-            <div className="category-empty">Loading categories...</div>
-          ) : categories.length === 0 ? (
+            <div className="category-empty">Loading tags...</div>
+          ) : tags.length === 0 ? (
             <div className="category-empty">
-              No categories yet. Create your first one above!
+              No tags yet. Create your first one above!
             </div>
           ) : (
             <ul className="category-list">
-              {categories.map((cat) => (
-                <li key={cat.id} className="category-item">
+              {tags.map((tag) => (
+                <li key={tag.id} className="category-item">
                   <div className="category-info">
-                    <span className="category-pill-preview">{cat.name}</span>
+                    <span className="tag-pill-preview">#{tag.name}</span>
                     <span className="category-task-count">
-                      {cat.taskCount} {cat.taskCount === 1 ? "task" : "tasks"}
+                      {tag.taskCount} {tag.taskCount === 1 ? "task" : "tasks"}
                     </span>
                   </div>
                   <button
                     type="button"
                     className="danger-button category-delete-button"
-                    onClick={() => void handleDelete(cat.id, cat.name)}
-                    disabled={deletingId === cat.id}
+                    onClick={() => void handleDelete(tag.id, tag.name)}
+                    disabled={deletingId === tag.id}
                   >
-                    {deletingId === cat.id ? "Deleting..." : "Delete"}
+                    {deletingId === tag.id ? "Deleting..." : "Delete"}
                   </button>
                 </li>
               ))}
@@ -194,4 +193,4 @@ function CategoryManager({
   );
 }
 
-export default memo(CategoryManager);
+export default memo(TagManager);

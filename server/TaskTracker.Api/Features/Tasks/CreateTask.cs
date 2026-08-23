@@ -17,7 +17,8 @@ public sealed record TaskCreateRequest(
     [Required(AllowEmptyStrings = false, ErrorMessage = "Title is required.")]
     [MaxLength(200)]
     string Title,
-    int? CategoryId = null);
+    int? CategoryId = null,
+    List<int>? TagIds = null);
 
 public static class CreateTask
 {
@@ -37,8 +38,14 @@ public static class CreateTask
             }
         }
 
+        var (tagError, tags) = await db.ValidateTagsExistAsync(req.TagIds, ct);
+        if (tagError is not null)
+        {
+            return tagError;
+        }
+
         // Mapping request -> entity by hand IS the allowlist. Never db.Add(clientDto).
-        var task = new TaskItem { Title = req.Title.Trim(), CategoryId = req.CategoryId };
+        var task = new TaskItem { Title = req.Title.Trim(), CategoryId = req.CategoryId, Tags = tags };
 
         db.Tasks.Add(task);
         await db.SaveChangesAsync(ct);
