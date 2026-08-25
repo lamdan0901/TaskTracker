@@ -30,10 +30,13 @@ export type SubtaskItem = {
   taskId?: number;
 };
 
+export type Priority = "Low" | "Medium" | "High" | "Urgent";
+
 export type TaskItem = {
   id: number;
   title: string;
   isDone: boolean;
+  priority: Priority;
   createdAt: string;
   categoryId: number | null;
   category: CategorySummary | null;
@@ -48,13 +51,14 @@ export type PagedResult = {
   pageSize: number;
 };
 
-export type SortKey = "createdAt" | "title" | "isDone";
+export type SortKey = "createdAt" | "title" | "isDone" | "priority";
 export type SortDir = "asc" | "desc";
 export type DoneFilter = "" | "true" | "false";
 
 export type QueryState = {
   search: string;
   isDone: DoneFilter;
+  priority: Priority | "";
   categoryId: number | null;
   tagId: number | null;
   sortBy: SortKey | null;

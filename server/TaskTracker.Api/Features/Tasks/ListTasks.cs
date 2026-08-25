@@ -18,11 +18,12 @@ public sealed record TaskQueryRequest
     public int? CategoryId { get; init; }
     public int? TagId { get; init; }
     public string? Tag { get; init; }
+    public Priority? Priority { get; init; }
 
     // AllowedValues (.NET 8+) replaces the hand-rolled switch this record used to
     // carry in Validate(). Every one of these attributes treats null as "not
     // supplied" and passes it, which is exactly what optional query params need.
-    [AllowedValues(null, "title", "createdAt", "isDone")]
+    [AllowedValues(null, "title", "createdAt", "isDone", "priority")]
     public string? SortBy { get; init; }
 
     [AllowedValues(null, "asc", "desc")]
@@ -74,20 +75,21 @@ public static class ListTasks
             query = query.Where(t => EF.Functions.Like(t.Title, $"%{escaped}%", "\\"));
         }
 
-        // 4. Filter: isDone. `is bool isDone` unwraps the nullable once so the
+        // 4. Filters: isDone, categoryId, tagId, tagName.
+        //    `is bool isDone` unwraps the nullable once so the
         //    predicate compares plain bools — EF translates that cleanly.
         //    Absent (null) means "don't filter", not "filter by false".
         if (q.IsDone is bool isDone)
             query = query.Where(t => t.IsDone == isDone);
 
-        // Filter by categoryId if any
         if (q.CategoryId is int categoryId) query = query.Where(t => t.CategoryId == categoryId);
 
-        // Filter by tagid if provided
         if (q.TagId is int tagId) query = query.Where(t => t.Tags.Any(tag => tag.Id == tagId));
 
-        // Filter by tagname if provided
         if (!string.IsNullOrWhiteSpace(q.Tag)) query = query.Where(t => t.Tags.Any(tag => tag.Name == q.Tag));
+
+        if (q.Priority is Priority priority)
+            query = query.Where(t => t.Priority == priority);
 
         // 5. Count the filtered set BEFORE paging, so totalCount tells the client
         //    how many rows match their filters — not how many are on this page.
@@ -109,6 +111,7 @@ public static class ListTasks
         {
             "title" => desc ? query.OrderByDescending(t => t.Title) : query.OrderBy(t => t.Title),
             "isDone" => desc ? query.OrderByDescending(t => t.IsDone) : query.OrderBy(t => t.IsDone),
+            "priority" => desc ? query.OrderByDescending(t => t.Priority) : query.OrderBy(t => t.Priority),
             _ => desc ? query.OrderByDescending(t => t.CreatedAt) : query.OrderBy(t => t.CreatedAt),
         };
 
@@ -129,6 +132,7 @@ public static class ListTasks
             t.Id,
             t.Title,
             t.IsDone,
+            t.Priority,
             t.CreatedAt,
             t.CategoryId,
             t.Category == null ? null : new CategorySummaryDto(t.Category.Id, t.Category.Name),

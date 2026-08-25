@@ -51,6 +51,12 @@ function TaskRow({
         </div>
       </td>
 
+      <td className="col-priority">
+        <span className={`task-priority-pill priority-${task.priority.toLowerCase()}`}>
+          {task.priority}
+        </span>
+      </td>
+
       <td className="col-category">
         {task.category ? (
           <span className="task-category-pill" title={`Category: ${task.category.name}`}>

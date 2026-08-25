@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using TaskTracker.Api.Data;
+using TaskTracker.Api.Data.Entities;
 using TaskTracker.Api.Common;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,11 +15,12 @@ public sealed record TaskUpdateRequest(
     [MaxLength(200)] string? Title,
     bool? IsDone,
     int? CategoryId,
+    Priority? Priority,
     List<int>? TagIds = null) : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext ctx)
     {
-        if ((Title, IsDone, CategoryId, TagIds) is (null, null, null, null))
+        if ((Title, IsDone, CategoryId, TagIds, Priority) is (null, null, null, null, null))
             yield return new ValidationResult("At least one field must be provided.");
 
         // Distinguish absent (null, fine) from present-but-blank (rejected).
@@ -68,6 +70,7 @@ public static class UpdateTask
         // because that one needs the database.
         if (req.Title is not null) task.Title = req.Title.Trim();
         if (req.IsDone is not null) task.IsDone = req.IsDone.Value;
+        if (req.Priority is not null) task.Priority = req.Priority.Value;
 
         await db.SaveChangesAsync(ct);
         return Results.NoContent();

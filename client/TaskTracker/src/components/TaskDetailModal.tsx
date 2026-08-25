@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createSubtask, deleteSubtask, fetchSubtasks, fetchTask, toErrorMessage, updateSubtask } from "../api";
-import type { CategoryItem, SubtaskItem, TagItem, TaskItem } from "../types";
+import type { CategoryItem, Priority, SubtaskItem, TagItem, TaskItem } from "../types";
 
 type TaskDetailModalProps = {
   taskId: number | null;
@@ -13,6 +13,7 @@ type TaskDetailModalProps = {
     updates: {
       title: string;
       isDone: boolean;
+      priority: Priority;
       categoryId: number | null;
       tagIds: number[];
     },
@@ -48,6 +49,7 @@ function TaskDetailModal({
   // Form states
   const [title, setTitle] = useState("");
   const [isDone, setIsDone] = useState(false);
+  const [priority, setPriority] = useState<Priority>("Medium");
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
@@ -59,6 +61,7 @@ function TaskDetailModal({
       setTask(data);
       setTitle(data.title);
       setIsDone(data.isDone);
+      setPriority(data.priority ?? "Medium");
       setCategoryId(data.categoryId);
       setSelectedTagIds(data.tags ? data.tags.map((t) => t.id) : []);
 
@@ -185,6 +188,7 @@ function TaskDetailModal({
       const success = await onSaveTask(task, {
         title: trimmedTitle,
         isDone,
+        priority,
         categoryId,
         tagIds: selectedTagIds,
       });
@@ -311,6 +315,25 @@ function TaskDetailModal({
                     : "Mark as Incomplete (Open)"}
                 </span>
               </label>
+            </div>
+
+            {/* Priority Section */}
+            <div className="form-group">
+              <label htmlFor="task-detail-priority-select" className="form-label">
+                Priority
+              </label>
+              <select
+                id="task-detail-priority-select"
+                className="task-detail-select"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as Priority)}
+                disabled={saving || deleting}
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Urgent">Urgent</option>
+              </select>
             </div>
 
             {/* Category Section */}

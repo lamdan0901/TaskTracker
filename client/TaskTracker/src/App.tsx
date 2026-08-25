@@ -24,7 +24,7 @@ import TaskForm from "./components/TaskForm";
 import TaskTable from "./components/TaskTable";
 import TaskToolbar from "./components/TaskToolbar";
 import { useTheme } from "./hooks/useTheme";
-import type { CategoryItem, DoneFilter, QueryState, SortKey, TagItem, TaskItem } from "./types";
+import type { CategoryItem, DoneFilter, Priority, QueryState, SortKey, TagItem, TaskItem } from "./types";
 import "./App.css";
 
 function App() {
@@ -55,6 +55,7 @@ function App() {
   const hasActiveFilters =
     query.search !== "" ||
     query.isDone !== "" ||
+    query.priority !== "" ||
     query.categoryId !== null ||
     query.tagId !== null;
   const allSelected =
@@ -142,6 +143,10 @@ function App() {
     setQuery((current) => ({ ...current, isDone, pageIndex: 0 }));
   }, []);
 
+  const handlePriorityFilterChange = useCallback((priority: Priority | "") => {
+    setQuery((current) => ({ ...current, priority, pageIndex: 0 }));
+  }, []);
+
   const handleCategoryFilterChange = useCallback((categoryId: number | null) => {
     setQuery((current) => ({ ...current, categoryId, pageIndex: 0 }));
   }, []);
@@ -169,7 +174,7 @@ function App() {
   }, []);
 
   const handleCreateTask = useCallback(
-    (title: string, categoryId: number | null): boolean => {
+    (title: string, categoryId: number | null, priority: Priority): boolean => {
       if (!title) {
         setError("Enter a task title before saving.");
         return false;
@@ -178,7 +183,7 @@ function App() {
       setSaving(true);
       setError(null);
 
-      void createTask(title, categoryId)
+      void createTask(title, categoryId, undefined, priority)
         .then(() => {
           setQuery(defaultQuery());
           void Promise.all([loadCategories(), loadTags()]);
@@ -235,6 +240,7 @@ function App() {
       updates: {
         title: string;
         isDone: boolean;
+        priority: Priority;
         categoryId: number | null;
         tagIds: number[];
       },
@@ -251,6 +257,7 @@ function App() {
         await updateTask(task.id, {
           title: updates.title,
           isDone: updates.isDone,
+          priority: updates.priority,
           categoryId: updates.categoryId,
           tagIds: updates.tagIds,
         });
@@ -352,6 +359,7 @@ function App() {
           onSearch={handleSearch}
           onClearSearch={handleClearSearch}
           onFilterChange={handleFilterChange}
+          onPriorityFilterChange={handlePriorityFilterChange}
           onCategoryFilterChange={handleCategoryFilterChange}
           onTagFilterChange={handleTagFilterChange}
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 using TaskTracker.Api.Data;
 using TaskTracker.Api.Common;
+using System.Text.Json.Serialization;
 
 using TaskTracker.Api.Features.Tasks;
 using TaskTracker.Api.Features.Categories;
@@ -18,6 +19,12 @@ builder.Services.AddOpenApi();
 // validator for each. Runs after model binding, before the handler — invalid
 // input short-circuits to 400 + ValidationProblemDetails and never reaches you.
 builder.Services.AddValidation();
+
+// Configure JSON serializer to accept and return enums as strings ("Low", "Medium", "High", "Urgent")
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 builder.Services.AddExceptionHandler<GlobalExeptionHandler>();
 builder.Services.AddProblemDetails();

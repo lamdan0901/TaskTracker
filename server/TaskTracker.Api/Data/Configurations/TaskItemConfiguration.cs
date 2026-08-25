@@ -17,6 +17,7 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
     builder.HasIndex(t => t.CreatedAt);
     builder.HasIndex(t => t.IsDone);
     builder.HasIndex(t => t.CategoryId);
+    builder.HasIndex(t => t.Priority);
 
     // Relationship: TaskItem (Many) -> Category (One)
     builder.HasOne(t => t.Category)

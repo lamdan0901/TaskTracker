@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import type { CategoryItem, DoneFilter, QueryState, TagItem } from "../types";
+import type { CategoryItem, DoneFilter, Priority, QueryState, TagItem } from "../types";
 
 type TaskToolbarProps = {
   query: QueryState;
@@ -8,6 +8,7 @@ type TaskToolbarProps = {
   onSearch: (search: string) => void;
   onClearSearch: () => void;
   onFilterChange: (isDone: DoneFilter) => void;
+  onPriorityFilterChange: (priority: Priority | "") => void;
   onCategoryFilterChange: (categoryId: number | null) => void;
   onTagFilterChange: (tagId: number | null) => void;
   onOpenCategoryManager: () => void;
@@ -21,6 +22,7 @@ function TaskToolbar({
   onSearch,
   onClearSearch,
   onFilterChange,
+  onPriorityFilterChange,
   onCategoryFilterChange,
   onTagFilterChange,
   onOpenCategoryManager,
@@ -56,6 +58,23 @@ function TaskToolbar({
           </button>
         ) : null}
       </form>
+
+      <label className="toolbar-field">
+        <span>Priority</span>
+        <select
+          value={query.priority}
+          onChange={(event) =>
+            onPriorityFilterChange(event.target.value as Priority | "")
+          }
+          aria-label="Filter tasks by priority"
+        >
+          <option value="">All Priorities</option>
+          <option value="Urgent">Urgent</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+      </label>
 
       <label className="toolbar-field">
         <span>Category</span>

@@ -87,6 +87,14 @@ function TaskTable({
               onSort={onSort}
             />
           </th>
+          <th className="col-priority" aria-sort={ariaSort(query, "priority")}>
+            <SortHeaderButton
+              label="Priority"
+              column="priority"
+              query={query}
+              onSort={onSort}
+            />
+          </th>
           <th className="col-category">Category</th>
           <th className="col-tags">Tags</th>
           <th className="col-created" aria-sort={ariaSort(query, "createdAt")}>

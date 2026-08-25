@@ -1,4 +1,4 @@
-import type { CategoryItem, PagedResult, QueryState, SubtaskItem, TagItem, TaskItem } from "./types";
+import type { CategoryItem, PagedResult, Priority, QueryState, SubtaskItem, TagItem, TaskItem } from "./types";
 
 export const PAGE_SIZE = 5;
 
@@ -8,6 +8,7 @@ export function defaultQuery(): QueryState {
   return {
     search: "",
     isDone: "",
+    priority: "",
     categoryId: null,
     tagId: null,
     sortBy: null,
@@ -49,6 +50,7 @@ export async function fetchTasks(query: QueryState): Promise<PagedResult> {
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
   if (query.isDone !== "") params.set("isDone", query.isDone);
+  if (query.priority !== "") params.set("priority", query.priority);
   if (query.categoryId !== null) params.set("categoryId", String(query.categoryId));
   if (query.tagId !== null) params.set("tagId", String(query.tagId));
   if (query.sortBy !== null) {
@@ -82,6 +84,7 @@ export async function createTask(
   title: string,
   categoryId?: number | null,
   tagIds?: number[],
+  priority?: Priority,
 ): Promise<void> {
   const response = await fetch(buildApiUrl("/api/tasks"), {
     method: "POST",
@@ -90,6 +93,7 @@ export async function createTask(
       title,
       categoryId: categoryId ?? null,
       tagIds: tagIds ?? null,
+      priority: priority ?? "Medium",
     }),
   });
   if (!response.ok) {
@@ -102,6 +106,7 @@ export async function updateTask(
   body: {
     title?: string;
     isDone?: boolean;
+    priority?: Priority;
     categoryId?: number | null;
     tagIds?: number[];
   },
