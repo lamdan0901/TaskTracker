@@ -14,6 +14,7 @@ type TaskDetailModalProps = {
       title: string;
       isDone: boolean;
       priority: Priority;
+      dueDate: string | null;
       categoryId: number | null;
       tagIds: number[];
     },
@@ -50,6 +51,7 @@ function TaskDetailModal({
   const [title, setTitle] = useState("");
   const [isDone, setIsDone] = useState(false);
   const [priority, setPriority] = useState<Priority>("Medium");
+  const [dueDate, setDueDate] = useState<string>("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
@@ -62,6 +64,7 @@ function TaskDetailModal({
       setTitle(data.title);
       setIsDone(data.isDone);
       setPriority(data.priority ?? "Medium");
+      setDueDate(data.dueDate ?? "");
       setCategoryId(data.categoryId);
       setSelectedTagIds(data.tags ? data.tags.map((t) => t.id) : []);
 
@@ -189,6 +192,7 @@ function TaskDetailModal({
         title: trimmedTitle,
         isDone,
         priority,
+        dueDate: dueDate || null,
         categoryId,
         tagIds: selectedTagIds,
       });
@@ -334,6 +338,33 @@ function TaskDetailModal({
                 <option value="High">High</option>
                 <option value="Urgent">Urgent</option>
               </select>
+            </div>
+
+            {/* Due Date Section */}
+            <div className="form-group">
+              <div className="form-label-row">
+                <label htmlFor="task-detail-due-date-input" className="form-label">
+                  Due Date
+                </label>
+                {dueDate ? (
+                  <button
+                    type="button"
+                    className="link-button form-helper-btn"
+                    onClick={() => setDueDate("")}
+                    disabled={saving || deleting}
+                  >
+                    Clear Date
+                  </button>
+                ) : null}
+              </div>
+              <input
+                id="task-detail-due-date-input"
+                type="date"
+                className="task-detail-input"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                disabled={saving || deleting}
+              />
             </div>
 
             {/* Category Section */}

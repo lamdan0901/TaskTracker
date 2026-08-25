@@ -4,20 +4,27 @@ import type { CategoryItem, Priority } from "../types";
 type TaskFormProps = {
   categories: CategoryItem[];
   saving: boolean;
-  onSubmit: (title: string, categoryId: number | null, priority: Priority) => boolean;
+  onSubmit: (
+    title: string,
+    categoryId: number | null,
+    priority: Priority,
+    dueDate: string | null,
+  ) => boolean;
 };
 
 function TaskForm({ categories, saving, onSubmit }: TaskFormProps) {
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [priority, setPriority] = useState<Priority>("Medium");
+  const [dueDate, setDueDate] = useState("");
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (onSubmit(title.trim(), categoryId, priority)) {
+    if (onSubmit(title.trim(), categoryId, priority, dueDate || null)) {
       setTitle("");
       setCategoryId(null);
       setPriority("Medium");
+      setDueDate("");
     }
   }
 
@@ -45,6 +52,16 @@ function TaskForm({ categories, saving, onSubmit }: TaskFormProps) {
           <option value="High">High</option>
           <option value="Urgent">Urgent</option>
         </select>
+
+        <input
+          id="task-due-date-input"
+          type="date"
+          className="task-form-date-input"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          title="Due date (optional)"
+          aria-label="Due date (optional)"
+        />
 
         <select
           id="task-category-select"

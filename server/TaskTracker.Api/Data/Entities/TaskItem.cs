@@ -7,6 +7,7 @@ public class TaskItem
     public bool IsDone { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public Priority Priority { get; set; } = Priority.Medium;
+    public DateOnly? DueDate { get; set; }
 
     // Foreign Key: nullable int? means a task can be uncategorized
     public int? CategoryId { get; set; }

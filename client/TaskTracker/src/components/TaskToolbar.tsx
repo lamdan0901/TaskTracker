@@ -9,6 +9,7 @@ type TaskToolbarProps = {
   onClearSearch: () => void;
   onFilterChange: (isDone: DoneFilter) => void;
   onPriorityFilterChange: (priority: Priority | "") => void;
+  onOverdueFilterChange: (isOverdue: "" | "true" | "false") => void;
   onCategoryFilterChange: (categoryId: number | null) => void;
   onTagFilterChange: (tagId: number | null) => void;
   onOpenCategoryManager: () => void;
@@ -23,6 +24,7 @@ function TaskToolbar({
   onClearSearch,
   onFilterChange,
   onPriorityFilterChange,
+  onOverdueFilterChange,
   onCategoryFilterChange,
   onTagFilterChange,
   onOpenCategoryManager,
@@ -73,6 +75,21 @@ function TaskToolbar({
           <option value="High">High</option>
           <option value="Medium">Medium</option>
           <option value="Low">Low</option>
+        </select>
+      </label>
+
+      <label className="toolbar-field">
+        <span>Timeline</span>
+        <select
+          value={query.isOverdue}
+          onChange={(event) =>
+            onOverdueFilterChange(event.target.value as "" | "true" | "false")
+          }
+          aria-label="Filter tasks by timeline"
+        >
+          <option value="">All Deadlines</option>
+          <option value="true">⚠️ Overdue Only</option>
+          <option value="false">On Track / No Deadline</option>
         </select>
       </label>
 

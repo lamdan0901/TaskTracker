@@ -9,6 +9,8 @@ export function defaultQuery(): QueryState {
     search: "",
     isDone: "",
     priority: "",
+    dueDate: "",
+    isOverdue: "",
     categoryId: null,
     tagId: null,
     sortBy: null,
@@ -51,6 +53,8 @@ export async function fetchTasks(query: QueryState): Promise<PagedResult> {
   if (query.search) params.set("search", query.search);
   if (query.isDone !== "") params.set("isDone", query.isDone);
   if (query.priority !== "") params.set("priority", query.priority);
+  if (query.dueDate) params.set("dueDate", query.dueDate);
+  if (query.isOverdue !== "") params.set("isOverdue", query.isOverdue);
   if (query.categoryId !== null) params.set("categoryId", String(query.categoryId));
   if (query.tagId !== null) params.set("tagId", String(query.tagId));
   if (query.sortBy !== null) {
@@ -85,6 +89,7 @@ export async function createTask(
   categoryId?: number | null,
   tagIds?: number[],
   priority?: Priority,
+  dueDate?: string | null,
 ): Promise<void> {
   const response = await fetch(buildApiUrl("/api/tasks"), {
     method: "POST",
@@ -94,6 +99,7 @@ export async function createTask(
       categoryId: categoryId ?? null,
       tagIds: tagIds ?? null,
       priority: priority ?? "Medium",
+      dueDate: dueDate || null,
     }),
   });
   if (!response.ok) {
@@ -107,6 +113,7 @@ export async function updateTask(
     title?: string;
     isDone?: boolean;
     priority?: Priority;
+    dueDate?: string | null;
     categoryId?: number | null;
     tagIds?: number[];
   },

@@ -20,10 +20,15 @@ public sealed record TaskQueryRequest
     public string? Tag { get; init; }
     public Priority? Priority { get; init; }
 
+    public DateOnly? DueDate { get; init; }
+    public DateOnly? DueBefore { get; init; }
+    public DateOnly? DueAfter { get; init; }
+    public bool? IsOverdue { get; init; }
+
     // AllowedValues (.NET 8+) replaces the hand-rolled switch this record used to
     // carry in Validate(). Every one of these attributes treats null as "not
     // supplied" and passes it, which is exactly what optional query params need.
-    [AllowedValues(null, "title", "createdAt", "isDone", "priority")]
+    [AllowedValues(null, "title", "createdAt", "isDone", "priority", "dueDate")]
     public string? SortBy { get; init; }
 
     [AllowedValues(null, "asc", "desc")]
@@ -91,6 +96,19 @@ public static class ListTasks
         if (q.Priority is Priority priority)
             query = query.Where(t => t.Priority == priority);
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (q.DueDate is DateOnly dueDate)
+            query = query.Where(t => t.DueDate == dueDate);
+        if (q.DueBefore is DateOnly dueBefore)
+            query = query.Where(t => t.DueDate != null && t.DueDate <= q.DueBefore);
+        if (q.DueAfter is DateOnly dueAfter)
+            query = query.Where(t => t.DueDate != null && t.DueDate >= q.DueAfter);
+
+        if (q.IsOverdue is true)
+            query = query.Where(t => !t.IsDone && t.DueDate != null && t.DueDate < today);
+        else if (q.IsOverdue is false)
+            query = query.Where(t => t.IsDone || t.DueDate == null || t.DueDate >= today);
+
         // 5. Count the filtered set BEFORE paging, so totalCount tells the client
         //    how many rows match their filters — not how many are on this page.
         //    This is a separate round-trip (SELECT COUNT(*)) against the same filters.
@@ -112,6 +130,9 @@ public static class ListTasks
             "title" => desc ? query.OrderByDescending(t => t.Title) : query.OrderBy(t => t.Title),
             "isDone" => desc ? query.OrderByDescending(t => t.IsDone) : query.OrderBy(t => t.IsDone),
             "priority" => desc ? query.OrderByDescending(t => t.Priority) : query.OrderBy(t => t.Priority),
+            "dueDate" => desc
+                   ? query.OrderByDescending(t => t.DueDate.HasValue).ThenByDescending(t => t.DueDate)
+                   : query.OrderByDescending(t => t.DueDate.HasValue).ThenBy(t => t.DueDate),
             _ => desc ? query.OrderByDescending(t => t.CreatedAt) : query.OrderBy(t => t.CreatedAt),
         };
 
@@ -133,6 +154,7 @@ public static class ListTasks
             t.Title,
             t.IsDone,
             t.Priority,
+            t.DueDate,
             t.CreatedAt,
             t.CategoryId,
             t.Category == null ? null : new CategorySummaryDto(t.Category.Id, t.Category.Name),

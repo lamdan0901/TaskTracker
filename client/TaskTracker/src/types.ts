@@ -37,6 +37,7 @@ export type TaskItem = {
   title: string;
   isDone: boolean;
   priority: Priority;
+  dueDate: string | null;
   createdAt: string;
   categoryId: number | null;
   category: CategorySummary | null;
@@ -51,7 +52,7 @@ export type PagedResult = {
   pageSize: number;
 };
 
-export type SortKey = "createdAt" | "title" | "isDone" | "priority";
+export type SortKey = "createdAt" | "title" | "isDone" | "priority" | "dueDate";
 export type SortDir = "asc" | "desc";
 export type DoneFilter = "" | "true" | "false";
 
@@ -59,6 +60,8 @@ export type QueryState = {
   search: string;
   isDone: DoneFilter;
   priority: Priority | "";
+  dueDate: string;
+  isOverdue: "" | "true" | "false";
   categoryId: number | null;
   tagId: number | null;
   sortBy: SortKey | null;

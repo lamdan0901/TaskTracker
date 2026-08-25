@@ -56,6 +56,8 @@ function App() {
     query.search !== "" ||
     query.isDone !== "" ||
     query.priority !== "" ||
+    query.dueDate !== "" ||
+    query.isOverdue !== "" ||
     query.categoryId !== null ||
     query.tagId !== null;
   const allSelected =
@@ -147,6 +149,10 @@ function App() {
     setQuery((current) => ({ ...current, priority, pageIndex: 0 }));
   }, []);
 
+  const handleOverdueFilterChange = useCallback((isOverdue: "" | "true" | "false") => {
+    setQuery((current) => ({ ...current, isOverdue, pageIndex: 0 }));
+  }, []);
+
   const handleCategoryFilterChange = useCallback((categoryId: number | null) => {
     setQuery((current) => ({ ...current, categoryId, pageIndex: 0 }));
   }, []);
@@ -174,7 +180,12 @@ function App() {
   }, []);
 
   const handleCreateTask = useCallback(
-    (title: string, categoryId: number | null, priority: Priority): boolean => {
+    (
+      title: string,
+      categoryId: number | null,
+      priority: Priority,
+      dueDate: string | null,
+    ): boolean => {
       if (!title) {
         setError("Enter a task title before saving.");
         return false;
@@ -183,7 +194,7 @@ function App() {
       setSaving(true);
       setError(null);
 
-      void createTask(title, categoryId, undefined, priority)
+      void createTask(title, categoryId, undefined, priority, dueDate)
         .then(() => {
           setQuery(defaultQuery());
           void Promise.all([loadCategories(), loadTags()]);
@@ -241,6 +252,7 @@ function App() {
         title: string;
         isDone: boolean;
         priority: Priority;
+        dueDate: string | null;
         categoryId: number | null;
         tagIds: number[];
       },
@@ -258,6 +270,7 @@ function App() {
           title: updates.title,
           isDone: updates.isDone,
           priority: updates.priority,
+          dueDate: updates.dueDate,
           categoryId: updates.categoryId,
           tagIds: updates.tagIds,
         });
@@ -360,6 +373,7 @@ function App() {
           onClearSearch={handleClearSearch}
           onFilterChange={handleFilterChange}
           onPriorityFilterChange={handlePriorityFilterChange}
+          onOverdueFilterChange={handleOverdueFilterChange}
           onCategoryFilterChange={handleCategoryFilterChange}
           onTagFilterChange={handleTagFilterChange}
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}

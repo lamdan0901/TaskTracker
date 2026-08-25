@@ -57,6 +57,30 @@ function TaskRow({
         </span>
       </td>
 
+      <td className="col-due">
+        {task.dueDate ? (
+          (() => {
+            const todayStr = new Date().toISOString().split("T")[0];
+            const isOverdue = !task.isDone && task.dueDate < todayStr;
+            const isToday = task.dueDate === todayStr;
+
+            return (
+              <span
+                className={`task-due-pill ${
+                  isOverdue ? "due-overdue" : isToday ? "due-today" : ""
+                }`}
+                title={`Due: ${task.dueDate}${isOverdue ? " (Overdue!)" : isToday ? " (Today)" : ""}`}
+              >
+                📅 {task.dueDate}
+                {isOverdue ? " (Overdue)" : isToday ? " (Today)" : ""}
+              </span>
+            );
+          })()
+        ) : (
+          <span className="task-no-due">—</span>
+        )}
+      </td>
+
       <td className="col-category">
         {task.category ? (
           <span className="task-category-pill" title={`Category: ${task.category.name}`}>
