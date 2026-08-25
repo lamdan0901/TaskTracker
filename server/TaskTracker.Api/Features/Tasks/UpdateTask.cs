@@ -72,7 +72,7 @@ public static class UpdateTask
         if (req.Title is not null) task.Title = req.Title.Trim();
         if (req.IsDone is not null) task.IsDone = req.IsDone.Value;
         if (req.Priority is not null) task.Priority = req.Priority.Value;
-        if (req.DueDate is not null) task.DueDate = req.DueDate.Value;
+        task.DueDate = req.DueDate.HasValue ? req.DueDate.Value : null;
 
         await db.SaveChangesAsync(ct);
         return Results.NoContent();
