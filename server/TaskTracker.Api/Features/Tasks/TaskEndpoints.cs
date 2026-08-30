@@ -10,16 +10,18 @@ public static class TaskEndpoints
 {
     public static void MapTaskEndpoints(this WebApplication app)
     {
+        var group = app.MapGroup("").RequireAuthorization();
+
         // Order does not matter for routing — ASP.NET Core matches by template
         // precedence (literal segments beat parameter segments), not by
         // registration order. Kept in CRUD order for readability only.
-        ListTasks.Map(app);
-        GetTask.Map(app);
-        CreateTask.Map(app);
-        UpdateTask.Map(app);
-        MarkAllTasks.Map(app);
-        DeleteTask.Map(app);
+        ListTasks.Map(group);
+        GetTask.Map(group);
+        CreateTask.Map(group);
+        UpdateTask.Map(group);
+        MarkAllTasks.Map(group);
+        DeleteTask.Map(group);
 
-        app.MapSubtaskEndpoints();
+        group.MapSubtaskEndpoints();
     }
 }

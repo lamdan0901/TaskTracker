@@ -14,17 +14,23 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             .IsRequired();
 
         // Indexes
-        builder.HasIndex(t => t.CreatedAt);
-        builder.HasIndex(t => t.IsDone);
-        builder.HasIndex(t => t.CategoryId);
-        builder.HasIndex(t => t.Priority);
-        builder.HasIndex(t => t.DueDate);
+        builder.HasIndex(t => new { t.OwnerId, t.CreatedAt });
+        builder.HasIndex(t => new { t.OwnerId, t.IsDone });
+        builder.HasIndex(t => new { t.OwnerId, t.DueDate });
+        builder.HasIndex(t => new { t.OwnerId, t.Priority });
+        builder.HasIndex(t => t.CategoryId); // Why this does not need  composite?
 
         // Relationship: TaskItem (Many) -> Category (One)
         builder.HasOne(t => t.Category)
             .WithMany(c => c.Tasks)
             .HasForeignKey(t => t.CategoryId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Relationship: TaskItem (Many) -> Owner (One)
+        builder.HasOne(t => t.Owner)
+            .WithMany(u => u.Tasks)
+            .HasForeignKey(t => t.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Relationship: TaskItem (Many) <-> Tag (Many)
         builder.HasMany(t => t.Tags)

@@ -7,7 +7,7 @@ using TaskTracker.Api.Data.Entities;
 namespace TaskTracker.Api.Features.Categories;
 
 public sealed record CategoryCreateRequest(
-  [Required(AllowEmptyStrings =false,ErrorMessage ="Category name is required.")]
+  [Required(AllowEmptyStrings = false,ErrorMessage = "Category name is required.")]
   [MaxLength(50)]
   string Name
 );

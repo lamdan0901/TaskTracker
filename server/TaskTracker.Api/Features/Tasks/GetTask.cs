@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaskTracker.Api.Common;
 using TaskTracker.Api.Data;
 using TaskTracker.Api.Data.Entities;
 

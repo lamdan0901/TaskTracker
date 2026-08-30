@@ -13,7 +13,12 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
         .UseCollation("NOCASE")
         .IsRequired();
 
-    builder.HasIndex(c => c.Name)
+    builder.HasIndex(c => new { c.Name, c.OwnerId })
         .IsUnique();
+
+    builder.HasOne(c => c.Owner)
+        .WithMany(u => u.Categories)
+        .HasForeignKey(c => c.OwnerId)
+        .OnDelete(DeleteBehavior.Cascade);
   }
 }

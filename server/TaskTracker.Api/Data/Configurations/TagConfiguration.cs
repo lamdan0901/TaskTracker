@@ -13,7 +13,13 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
         .UseCollation("NOCASE")
         .IsRequired();
 
-    builder.HasIndex(c => c.Name)
+
+    builder.HasIndex(c => new { c.Name, c.OwnerId })
         .IsUnique();
+
+    builder.HasOne(t => t.Owner)
+        .WithMany(u => u.Tags)
+        .HasForeignKey(c => c.OwnerId)
+        .OnDelete(DeleteBehavior.Cascade);
   }
 }

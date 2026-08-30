@@ -7,4 +7,7 @@ public class Category
   public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
   // Collection Navigation Property: One Category has Many Tasks
   public List<TaskItem> Tasks { get; set; } = [];
+
+  public int OwnerId { get; set; }
+  public User Owner { get; set; } = null!;
 }

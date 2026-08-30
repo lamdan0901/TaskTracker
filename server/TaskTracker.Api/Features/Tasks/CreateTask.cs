@@ -18,7 +18,8 @@ public sealed record TaskCreateRequest(
     [MaxLength(200)]
     string Title,
     int? CategoryId = null,
-    Priority? Priority = null, DateOnly? DueDate = null,
+    Priority? Priority = null,
+    DateOnly? DueDate = null,
     List<int>? TagIds = null);
 
 public static class CreateTask
@@ -29,6 +30,7 @@ public static class CreateTask
     private static async Task<IResult> Handle(
         TaskCreateRequest req,
         AppDbContext db,
+        ICurrentUser currentUser,
         CancellationToken ct)
     {
         if (req.CategoryId is not null)
@@ -46,7 +48,15 @@ public static class CreateTask
         }
 
         // Mapping request -> entity by hand IS the allowlist. Never db.Add(clientDto).
-        var task = new TaskItem { Title = req.Title.Trim(), CategoryId = req.CategoryId, Tags = tags, Priority = req.Priority ?? Priority.Medium, DueDate = req.DueDate, };
+        var task = new TaskItem
+        {
+            Title = req.Title.Trim(),
+            CategoryId = req.CategoryId,
+            Tags = tags,
+            Priority = req.Priority ?? Priority.Medium,
+            DueDate = req.DueDate,
+            OwnerId = currentUser.RequireId()
+        };
 
         db.Tasks.Add(task);
         await db.SaveChangesAsync(ct);

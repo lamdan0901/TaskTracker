@@ -7,4 +7,7 @@ public class Tag
   public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
   public List<TaskItem> Tasks { get; set; } = [];
+
+  public int OwnerId { get; set; }
+  public User Owner { get; set; } = null!;
 }
