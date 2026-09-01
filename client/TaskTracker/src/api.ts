@@ -1,4 +1,4 @@
-import { getToken, notifyUnauthorized } from "./auth";
+import { clearSession, getRefreshToken, getToken, notifyUnauthorized, setTokens } from "./auth";
 import type {
   AuthResponse,
   AuthUser,
@@ -23,7 +23,7 @@ export function defaultQuery(): QueryState {
     dueDate: "",
     isOverdue: "",
     categoryId: null,
-    tagId: null,
+    tagIds: [],
     sortBy: null,
     sortDir: "desc",
     pageIndex: 0,
@@ -34,7 +34,50 @@ function buildApiUrl(path: string): string {
   return `${apiBaseUrl}${path}`;
 }
 
-async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+// Single-flight refresh promise to prevent concurrent refresh requests from colliding
+let refreshPromise: Promise<string | null> | null = null;
+
+async function requestRefreshToken(): Promise<string | null> {
+  const currentRefreshToken = getRefreshToken();
+  if (!currentRefreshToken) {
+    return null;
+  }
+
+  try {
+    const res = await fetch(buildApiUrl("/api/auth/refresh"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refreshToken: currentRefreshToken }),
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = (await res.json()) as AuthResponse;
+    setTokens(data.accessToken, data.refreshToken);
+    return data.accessToken;
+  } catch {
+    return null;
+  }
+}
+
+async function getRefreshedToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = requestRefreshToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+async function apiFetch(
+  path: string,
+  options: RequestInit = {},
+  isRetry = false,
+): Promise<Response> {
   const headers = new Headers(options.headers || {});
   const token = getToken();
 
@@ -47,7 +90,29 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
     headers,
   });
 
-  if (response.status === 401) {
+  // 401 Interceptor: attempt single-flight token refresh and retry
+  if (
+    response.status === 401 &&
+    !isRetry &&
+    !path.startsWith("/api/auth/login") &&
+    !path.startsWith("/api/auth/register") &&
+    !path.startsWith("/api/auth/refresh")
+  ) {
+    const newToken = await getRefreshedToken();
+    if (newToken) {
+      const retryHeaders = new Headers(options.headers || {});
+      retryHeaders.set("Authorization", `Bearer ${newToken}`);
+      return apiFetch(
+        path,
+        {
+          ...options,
+          headers: retryHeaders,
+        },
+        true,
+      );
+    }
+
+    // Refresh failed or no refresh token: bounce to login
     notifyUnauthorized();
   }
 
@@ -107,6 +172,22 @@ export async function register(email: string, password: string): Promise<void> {
   }
 }
 
+export async function logout(): Promise<void> {
+  const currentRefreshToken = getRefreshToken();
+  if (currentRefreshToken) {
+    try {
+      await fetch(buildApiUrl("/api/auth/logout"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: currentRefreshToken }),
+      });
+    } catch {
+      // Ignore network errors during logout
+    }
+  }
+  clearSession();
+}
+
 export async function fetchMe(): Promise<AuthUser> {
   const response = await apiFetch("/api/auth/me");
   if (!response.ok) {
@@ -123,7 +204,12 @@ export async function fetchTasks(query: QueryState): Promise<PagedResult> {
   if (query.dueDate) params.set("dueDate", query.dueDate);
   if (query.isOverdue !== "") params.set("isOverdue", query.isOverdue);
   if (query.categoryId !== null) params.set("categoryId", String(query.categoryId));
-  if (query.tagId !== null) params.set("tagId", String(query.tagId));
+  if (query.tagIds && query.tagIds.length > 0) {
+    query.tagIds.forEach((id) => params.append("tagIds", String(id)));
+  }
+  if (query.tagNames && query.tagNames.length > 0) {
+    query.tagNames.forEach((name) => params.append("tagNames", name));
+  }
   if (query.sortBy !== null) {
     params.set("sortBy", query.sortBy);
     params.set("sortDir", query.sortDir);
