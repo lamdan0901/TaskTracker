@@ -12,11 +12,12 @@ import {
   fetchMe,
   fetchTags,
   fetchTasks,
+  logout,
   toErrorMessage,
   toggleAllTasks,
   updateTask,
 } from "./api";
-import { clearSession, getToken, getUser, onUnauthorized, setSession } from "./auth";
+import { clearSession, getRefreshToken, getToken, getUser, onUnauthorized, setSession } from "./auth";
 import CategoryManager from "./components/CategoryManager";
 import Hero from "./components/Hero";
 import LoginForm from "./components/LoginForm";
@@ -87,7 +88,7 @@ function App() {
     void fetchMe()
       .then((userProfile) => {
         setCurrentUser(userProfile);
-        setSession(token, userProfile);
+        setSession(token, getRefreshToken(), userProfile);
       })
       .catch(() => {
         clearSession();
@@ -111,7 +112,7 @@ function App() {
     query.dueDate !== "" ||
     query.isOverdue !== "" ||
     query.categoryId !== null ||
-    query.tagId !== null;
+    (query.tagIds && query.tagIds.length > 0);
   const allSelected =
     tasks.length > 0 &&
     completedCount === tasks.length &&
@@ -218,8 +219,12 @@ function App() {
     setQuery((current) => ({ ...current, categoryId, pageIndex: 0 }));
   }, []);
 
-  const handleTagFilterChange = useCallback((tagId: number | null) => {
-    setQuery((current) => ({ ...current, tagId, pageIndex: 0 }));
+  const handleTagIdsFilterChange = useCallback((tagIds: number[]) => {
+    setQuery((current) => ({
+      ...current,
+      tagIds,
+      pageIndex: 0,
+    }));
   }, []);
 
   const handlePageChange = useCallback((pageIndex: number) => {
@@ -246,6 +251,7 @@ function App() {
       categoryId: number | null,
       priority: Priority,
       dueDate: string | null,
+      tagIds: number[],
     ): boolean => {
       if (!title) {
         setError("Enter a task title before saving.");
@@ -255,7 +261,13 @@ function App() {
       setSaving(true);
       setError(null);
 
-      void createTask(title, categoryId, undefined, priority, dueDate)
+      void createTask(
+        title,
+        categoryId,
+        tagIds.length > 0 ? tagIds : undefined,
+        priority,
+        dueDate,
+      )
         .then(() => {
           setQuery(defaultQuery());
           void Promise.all([loadCategories(), loadTags()]);
@@ -400,13 +412,15 @@ function App() {
   const handleDeleteTag = useCallback(
     async (tagId: number): Promise<boolean> => {
       await deleteTag(tagId);
-      if (query.tagId === tagId) {
-        setQuery((curr) => ({ ...curr, tagId: null, pageIndex: 0 }));
-      }
+      setQuery((curr) => ({
+        ...curr,
+        tagIds: curr.tagIds ? curr.tagIds.filter((id) => id !== tagId) : [],
+        pageIndex: 0,
+      }));
       await Promise.all([loadTags(), loadTasks()]);
       return true;
     },
-    [query.tagId, loadTags, loadTasks],
+    [loadTags, loadTasks],
   );
 
   const handleLoginSuccess = useCallback((user: AuthUser) => {
@@ -416,8 +430,8 @@ function App() {
     setQuery(defaultQuery());
   }, []);
 
-  const handleLogout = useCallback(() => {
-    clearSession();
+  const handleLogout = useCallback(async () => {
+    await logout();
     setCurrentUser(null);
     setTasks([]);
     setCategories([]);
@@ -486,8 +500,11 @@ function App() {
       <section className="workspace">
         <TaskForm
           categories={categories}
+          tags={tags}
           saving={saving}
           onSubmit={handleCreateTask}
+          onOpenTagManager={() => setIsTagManagerOpen(true)}
+          onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
         />
 
         <TaskToolbar
@@ -500,7 +517,7 @@ function App() {
           onPriorityFilterChange={handlePriorityFilterChange}
           onOverdueFilterChange={handleOverdueFilterChange}
           onCategoryFilterChange={handleCategoryFilterChange}
-          onTagFilterChange={handleTagFilterChange}
+          onTagIdsFilterChange={handleTagIdsFilterChange}
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
           onOpenTagManager={() => setIsTagManagerOpen(true)}
         />

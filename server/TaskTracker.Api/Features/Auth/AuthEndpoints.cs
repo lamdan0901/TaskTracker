@@ -6,6 +6,8 @@ public static class AuthEndpoints
   {
     RegisterUser.Map(app);
     LoginUser.Map(app);
+    RefreshTokenEndpoint.Map(app);
+    LogoutUser.Map(app);
     Me.Map(app);
   }
 }

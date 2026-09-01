@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using TaskTracker.Api.Common;
 using TaskTracker.Api.Data;
 using TaskTracker.Api.Data.Entities;
@@ -60,6 +61,29 @@ public static class CreateTask
 
         db.Tasks.Add(task);
         await db.SaveChangesAsync(ct);
-        return Results.Created($"/api/tasks/{task.Id}", task);
+
+        string? categoryName = null;
+        if (task.CategoryId is int catId)
+        {
+            categoryName = await db.Categories
+                .Where(c => c.Id == catId)
+                .Select(c => c.Name)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        var response = new TaskResponse(
+            task.Id,
+            task.Title,
+            task.IsDone,
+            task.Priority,
+            task.DueDate,
+            task.CreatedAt,
+            task.CategoryId,
+            task.CategoryId == null ? null : new CategorySummaryDto(task.CategoryId.Value, categoryName ?? ""),
+            tags.OrderBy(t => t.Name).Select(t => new TagSummaryDto(t.Id, t.Name)).ToList(),
+            []
+        );
+
+        return Results.Created($"/api/tasks/{task.Id}", response);
     }
 }
