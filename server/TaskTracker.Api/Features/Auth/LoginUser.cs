@@ -27,7 +27,19 @@ public sealed class LoginUser
     var result = new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, req.Password);
     if (result == PasswordVerificationResult.Failed) return Results.Unauthorized();
 
-    var (token, expiresAt) = tokens.CreateAccessToken(user);
-    return Results.Ok(new { user.Id, user.Email, token, expiresAt });
+    var (accessToken, expiresAt) = tokens.CreateAccessToken(user);
+    var (rawRefreshToken, tokenHash, refreshExpiresAt) = tokens.CreateRefreshToken();
+    var refreshTokenEntity = new RefreshToken
+    {
+      UserId = user.Id,
+      TokenHash = tokenHash,
+      ExpiresAt = refreshExpiresAt,
+      CreatedAt = DateTime.UtcNow
+    };
+
+    db.RefreshTokens.Add(refreshTokenEntity);
+    await db.SaveChangesAsync(ct);
+
+    return Results.Ok(new { accessToken, refreshToken = rawRefreshToken, expiresAt });
   }
 }

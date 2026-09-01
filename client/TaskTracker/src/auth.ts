@@ -1,6 +1,7 @@
 import type { AuthUser } from "./types";
 
-const TOKEN_KEY = "tt_token";
+const ACCESS_TOKEN_KEY = "tt_token";
+const REFRESH_TOKEN_KEY = "tt_refresh_token";
 const USER_KEY = "tt_user";
 
 type UnauthorizedListener = () => void;
@@ -8,7 +9,15 @@ const unauthorizedListeners = new Set<UnauthorizedListener>();
 
 export function getToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function getRefreshToken(): string | null {
+  try {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
   } catch {
     return null;
   }
@@ -23,9 +32,16 @@ export function getUser(): AuthUser | null {
   }
 }
 
-export function setSession(token: string, user?: AuthUser | null): void {
+export function setSession(
+  accessToken: string,
+  refreshToken?: string | null,
+  user?: AuthUser | null,
+): void {
   try {
-    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    if (refreshToken !== undefined && refreshToken !== null) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    }
     if (user) {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
     }
@@ -34,9 +50,21 @@ export function setSession(token: string, user?: AuthUser | null): void {
   }
 }
 
+export function setTokens(accessToken: string, refreshToken?: string | null): void {
+  try {
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    if (refreshToken !== undefined && refreshToken !== null) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    }
+  } catch {
+    // LocalStorage write error handling
+  }
+}
+
 export function clearSession(): void {
   try {
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
   } catch {
     // LocalStorage remove error handling

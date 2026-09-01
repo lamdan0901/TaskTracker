@@ -31,4 +31,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUser c
   public DbSet<Tag> Tags => Set<Tag>();
   public DbSet<Subtask> Subtasks => Set<Subtask>();
   public DbSet<User> Users => Set<User>();
+  public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 }

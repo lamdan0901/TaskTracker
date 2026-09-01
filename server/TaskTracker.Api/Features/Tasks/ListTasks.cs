@@ -16,10 +16,12 @@ public sealed record TaskQueryRequest
     public string? Search { get; init; }
     public bool? IsDone { get; init; }
     public int? CategoryId { get; init; }
-    public int? TagId { get; init; }
-    public string? Tag { get; init; }
-    public Priority? Priority { get; init; }
 
+    // ASP.NET Core binds repeated query parameters (e.g. ?tagIds=1&tagIds=2 or ?tagIds=1) directly into arrays
+    public int[]? TagIds { get; init; }
+    public string[]? TagNames { get; init; }
+
+    public Priority? Priority { get; init; }
     public DateOnly? DueDate { get; init; }
     public DateOnly? DueBefore { get; init; }
     public DateOnly? DueAfter { get; init; }
@@ -57,115 +59,46 @@ public static class ListTasks
         [AsParameters] TaskQueryRequest q,
         CancellationToken ct)
     {
-        // 1. No validation guard here any more. AddValidation() runs an endpoint
-        //    filter before this method, so bad input never reaches the handler.
-
-        // 2. Start an unexecuted query. Nothing hits SQLite until CountAsync /
-        //    ToListAsync below — until then we're only building an expression tree.
-        //    AsNoTracking is a performance optimization for read-only queries instead of the default tracked queries that EF uses for updates.
+        // 1. Start base unexecuted query (AsNoTracking for read-only performance)
         var query = db.Tasks.AsNoTracking();
 
-        // 3. Filter: search. EF translates Contains() to instr(), which is byte-comparison
-        //    and ignores collation. LIKE is case-insensitive for ASCII in SQLite by default,
-        //    so ask for LIKE explicitly.
-        if (!string.IsNullOrWhiteSpace(q.Search))
-        {
-            // Escape LIKE wildcards in user input, or a search for "50%" matches every row.
-            // Backslash first — otherwise it re-escapes the backslashes added below.
-            var escaped = q.Search
-                .Replace("\\", "\\\\")
-                .Replace("%", "\\%")
-                .Replace("_", "\\_");
+        // 2. Text Search
+        query = query.ApplySearch(q.Search);
 
-            query = query.Where(t => EF.Functions.Like(t.Title, $"%{escaped}%", "\\"));
-        }
+        // 3. Status, Category, Priority Filters
+        query = query.ApplyStatusFilter(q.IsDone);
+        query = query.ApplyCategoryFilter(q.CategoryId);
+        query = query.ApplyPriorityFilter(q.Priority);
 
-        // 4. Filters: isDone, categoryId, tagId, tagName.
-        //    `is bool isDone` unwraps the nullable once so the
-        //    predicate compares plain bools — EF translates that cleanly.
-        //    Absent (null) means "don't filter", not "filter by false".
-        if (q.IsDone is bool isDone)
-            query = query.Where(t => t.IsDone == isDone);
+        // 4. Multi-tag Filters (Ids & Names)
+        query = query.ApplyTagFilters(q.TagIds, q.TagNames);
 
-        if (q.CategoryId is int categoryId) query = query.Where(t => t.CategoryId == categoryId);
+        // 5. Timeline / Due Date Filters
+        query = query.ApplyDueDateFilters(q.DueDate, q.DueBefore, q.DueAfter, q.IsOverdue);
 
-        if (q.TagId is int tagId) query = query.Where(t => t.Tags.Any(tag => tag.Id == tagId));
-
-        if (!string.IsNullOrWhiteSpace(q.Tag)) query = query.Where(t => t.Tags.Any(tag => tag.Name == q.Tag));
-
-        if (q.Priority is Priority priority)
-            query = query.Where(t => t.Priority == priority);
-
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        if (q.DueDate is DateOnly dueDate)
-            query = query.Where(t => t.DueDate == dueDate);
-        if (q.DueBefore is DateOnly dueBefore)
-            query = query.Where(t => t.DueDate != null && t.DueDate <= q.DueBefore);
-        if (q.DueAfter is DateOnly dueAfter)
-            query = query.Where(t => t.DueDate != null && t.DueDate >= q.DueAfter);
-
-        if (q.IsOverdue is true)
-            query = query.Where(t => !t.IsDone && t.DueDate != null && t.DueDate < today);
-        else if (q.IsOverdue is false)
-            query = query.Where(t => t.IsDone || t.DueDate == null || t.DueDate >= today);
-
-        // 5. Count the filtered set BEFORE paging, so totalCount tells the client
-        //    how many rows match their filters — not how many are on this page.
-        //    This is a separate round-trip (SELECT COUNT(*)) against the same filters.
+        // 6. Total Count of filtered records before paging
         var totalCount = await query.CountAsync(ct);
 
-        // 6. Sort. EF can't take a property name as a string, so a switch maps the
-        //    allowed values to real key selectors — which also means an attacker
-        //    can't inject a column name. Assigning back into `query` keeps all
-        //    three arms the same type even though OrderBy returns IOrderedQueryable.
-        //    Keep this switch even though AllowedValues now rejects unknown values:
-        //    the attribute is the validator, this is the injection-safe allowlist.
-        var desc = q.SortDirOrDefault == "desc";
+        // 7. Deterministic Sorting & Pagination
+        query = query.ApplySorting(q.SortByOrDefault, q.SortDirOrDefault);
+        query = query.ApplyPaging(q.PageIndexOrDefault, q.PageSizeOrDefault);
 
-        // Declare as IOrderedQueryable, not var. OrderBy/OrderByDescending both return
-        // IOrderedQueryable<T>, and that's the type that exposes ThenBy — plain
-        // IQueryable<T> does not. Naming the type here is what makes step 6b legal
-        IOrderedQueryable<TaskItem> orderedQuery = q.SortByOrDefault switch
-        {
-            "title" => desc ? query.OrderByDescending(t => t.Title) : query.OrderBy(t => t.Title),
-            "isDone" => desc ? query.OrderByDescending(t => t.IsDone) : query.OrderBy(t => t.IsDone),
-            "priority" => desc ? query.OrderByDescending(t => t.Priority) : query.OrderBy(t => t.Priority),
-            "dueDate" => desc
-                   ? query.OrderByDescending(t => t.DueDate.HasValue).ThenByDescending(t => t.DueDate)
-                   : query.OrderByDescending(t => t.DueDate.HasValue).ThenBy(t => t.DueDate),
-            _ => desc ? query.OrderByDescending(t => t.CreatedAt) : query.OrderBy(t => t.CreatedAt),
-        };
-
-        // 6b. Tiebreaker on the primary key. Id is unique, so no two rows can now compare
-        //     equal — the sort becomes a deterministic total order and paging is repeatable.
-        //     OrderBy sets the primary sort key. ThenBy adds a secondary key, used only to break ties in the first.
-        query = orderedQuery.ThenBy(t => t.Id);
-
-        // 7. Page and execute. Skip/Take must come after the sort or the slice is
-        //    arbitrary. ToListAsync is where the whole composed tree finally runs
-        //    as one SQL statement.
-        var pageIndex = q.PageIndexOrDefault;
-        var pageSize = q.PageSizeOrDefault;
+        // 8. Projection & Execution
         var items = await query
-        .Skip(pageIndex * pageSize)
-        .Take(pageSize)
-        .Select(t => new TaskResponse(
-            t.Id,
-            t.Title,
-            t.IsDone,
-            t.Priority,
-            t.DueDate,
-            t.CreatedAt,
-            t.CategoryId,
-            t.Category == null ? null : new CategorySummaryDto(t.Category.Id, t.Category.Name),
-            t.Tags.OrderBy(tag => tag.Name).Select(tag => new TagSummaryDto(tag.Id, tag.Name)).ToList(),
-            t.Subtasks.OrderBy(s => s.CreatedAt).Select(s => new SubtaskSummaryDto(s.Id, s.Title, s.IsDone, s.CreatedAt)).ToList()
-        ))
-        .ToListAsync(ct);
+            .Select(t => new TaskResponse(
+                t.Id,
+                t.Title,
+                t.IsDone,
+                t.Priority,
+                t.DueDate,
+                t.CreatedAt,
+                t.CategoryId,
+                t.Category == null ? null : new CategorySummaryDto(t.Category.Id, t.Category.Name),
+                t.Tags.OrderBy(tag => tag.Name).Select(tag => new TagSummaryDto(tag.Id, tag.Name)).ToList(),
+                t.Subtasks.OrderBy(s => s.CreatedAt).Select(s => new SubtaskSummaryDto(s.Id, s.Title, s.IsDone, s.CreatedAt)).ToList()
+            ))
+            .ToListAsync(ct);
 
-        // 8. Envelope: the page of rows plus the metadata the client needs to
-        //    render pagination. Echo pageIndex/pageSize so the client sees the
-        //    values actually applied, including the defaults it didn't send.
-        return Results.Ok(new PagedResult<TaskResponse>(items, totalCount, pageIndex, pageSize));
+        return Results.Ok(new PagedResult<TaskResponse>(items, totalCount, q.PageIndexOrDefault, q.PageSizeOrDefault));
     }
 }

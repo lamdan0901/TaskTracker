@@ -53,11 +53,11 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
       // Login and retrieve token
       const authRes = await login(trimmedEmail, password);
-      setSession(authRes.token);
+      setSession(authRes.accessToken, authRes.refreshToken);
 
       // Fetch user profile from /api/auth/me
       const profile = await fetchMe();
-      setSession(authRes.token, profile);
+      setSession(authRes.accessToken, authRes.refreshToken, profile);
 
       onSuccess(profile);
     } catch (err) {

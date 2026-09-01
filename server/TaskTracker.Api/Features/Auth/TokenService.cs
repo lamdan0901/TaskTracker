@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using TaskTracker.Api.Data.Entities;
@@ -36,5 +37,22 @@ public sealed class TokenService(IConfiguration config)
     );
 
     return (new JwtSecurityTokenHandler().WriteToken(token), expires);
+  }
+
+  public (string RawToken, string TokenHash, DateTime ExiresAt) CreateRefreshToken()
+  {
+    var randomeBytes = RandomNumberGenerator.GetBytes(32);
+    var rawToken = Convert.ToBase64String(randomeBytes);
+    var tokenHash = HashToken(rawToken);
+    var days = config.GetValue<int>("Jwt:RefreshTokenDays");
+    var expiresAt = DateTime.UtcNow.AddDays(days);
+
+    return (rawToken, tokenHash, expiresAt);
+  }
+
+  public static string HashToken(string rawToken)
+  {
+    var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));
+    return Convert.ToHexString(bytes);
   }
 }

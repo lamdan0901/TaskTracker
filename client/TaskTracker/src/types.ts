@@ -63,7 +63,8 @@ export type QueryState = {
   dueDate: string;
   isOverdue: "" | "true" | "false";
   categoryId: number | null;
-  tagId: number | null;
+  tagIds: number[];
+  tagNames?: string[];
   sortBy: SortKey | null;
   sortDir: SortDir;
   pageIndex: number;
@@ -75,5 +76,7 @@ export type AuthUser = {
 };
 
 export type AuthResponse = {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
 };
