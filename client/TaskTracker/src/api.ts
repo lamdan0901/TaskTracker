@@ -1,4 +1,15 @@
-import type { CategoryItem, PagedResult, Priority, QueryState, SubtaskItem, TagItem, TaskItem } from "./types";
+import { getToken, notifyUnauthorized } from "./auth";
+import type {
+  AuthResponse,
+  AuthUser,
+  CategoryItem,
+  PagedResult,
+  Priority,
+  QueryState,
+  SubtaskItem,
+  TagItem,
+  TaskItem,
+} from "./types";
 
 export const PAGE_SIZE = 5;
 
@@ -21,6 +32,26 @@ export function defaultQuery(): QueryState {
 
 function buildApiUrl(path: string): string {
   return `${apiBaseUrl}${path}`;
+}
+
+async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(options.headers || {});
+  const token = getToken();
+
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(buildApiUrl(path), {
+    ...options,
+    headers,
+  });
+
+  if (response.status === 401) {
+    notifyUnauthorized();
+  }
+
+  return response;
 }
 
 async function handleApiError(response: Response, defaultMessage: string): Promise<never> {
@@ -48,6 +79,42 @@ async function handleApiError(response: Response, defaultMessage: string): Promi
   throw new Error(`${defaultMessage} (${response.status})`);
 }
 
+// ----------------- Auth API -----------------
+
+export async function login(email: string, password: string): Promise<AuthResponse> {
+  const response = await apiFetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    await handleApiError(response, "Login failed");
+  }
+
+  return (await response.json()) as AuthResponse;
+}
+
+export async function register(email: string, password: string): Promise<void> {
+  const response = await apiFetch("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    await handleApiError(response, "Registration failed");
+  }
+}
+
+export async function fetchMe(): Promise<AuthUser> {
+  const response = await apiFetch("/api/auth/me");
+  if (!response.ok) {
+    await handleApiError(response, "Failed to load user profile");
+  }
+  return (await response.json()) as AuthUser;
+}
+
 export async function fetchTasks(query: QueryState): Promise<PagedResult> {
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
@@ -64,7 +131,7 @@ export async function fetchTasks(query: QueryState): Promise<PagedResult> {
   params.set("pageIndex", String(query.pageIndex));
   params.set("pageSize", String(PAGE_SIZE));
 
-  const response = await fetch(buildApiUrl(`/api/tasks?${params.toString()}`));
+  const response = await apiFetch(`/api/tasks?${params.toString()}`);
   if (!response.ok) {
     await handleApiError(response, "Failed to load tasks");
   }
@@ -77,7 +144,7 @@ export async function fetchTasks(query: QueryState): Promise<PagedResult> {
 }
 
 export async function fetchTask(taskId: number): Promise<TaskItem> {
-  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}`));
+  const response = await apiFetch(`/api/tasks/${taskId}`);
   if (!response.ok) {
     await handleApiError(response, "Failed to load task details");
   }
@@ -91,7 +158,7 @@ export async function createTask(
   priority?: Priority,
   dueDate?: string | null,
 ): Promise<void> {
-  const response = await fetch(buildApiUrl("/api/tasks"), {
+  const response = await apiFetch("/api/tasks", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -118,7 +185,7 @@ export async function updateTask(
     tagIds?: number[];
   },
 ): Promise<void> {
-  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}`), {
+  const response = await apiFetch(`/api/tasks/${taskId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -129,7 +196,7 @@ export async function updateTask(
 }
 
 export async function toggleAllTasks(nextIsDone: boolean): Promise<void> {
-  const response = await fetch(buildApiUrl("/api/tasks/mark-all"), {
+  const response = await apiFetch("/api/tasks/mark-all", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ isDone: nextIsDone }),
@@ -140,7 +207,7 @@ export async function toggleAllTasks(nextIsDone: boolean): Promise<void> {
 }
 
 export async function deleteTask(taskId: number): Promise<void> {
-  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}`), {
+  const response = await apiFetch(`/api/tasks/${taskId}`, {
     method: "DELETE",
   });
   if (!response.ok) {
@@ -149,7 +216,7 @@ export async function deleteTask(taskId: number): Promise<void> {
 }
 
 export async function fetchCategories(): Promise<CategoryItem[]> {
-  const response = await fetch(buildApiUrl("/api/categories"));
+  const response = await apiFetch("/api/categories");
   if (!response.ok) {
     await handleApiError(response, "Failed to load categories");
   }
@@ -162,7 +229,7 @@ export async function fetchCategories(): Promise<CategoryItem[]> {
 }
 
 export async function createCategory(name: string): Promise<CategoryItem> {
-  const response = await fetch(buildApiUrl("/api/categories"), {
+  const response = await apiFetch("/api/categories", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
@@ -174,7 +241,7 @@ export async function createCategory(name: string): Promise<CategoryItem> {
 }
 
 export async function deleteCategory(categoryId: number): Promise<void> {
-  const response = await fetch(buildApiUrl(`/api/categories/${categoryId}`), {
+  const response = await apiFetch(`/api/categories/${categoryId}`, {
     method: "DELETE",
   });
   if (!response.ok) {
@@ -183,7 +250,7 @@ export async function deleteCategory(categoryId: number): Promise<void> {
 }
 
 export async function fetchTags(): Promise<TagItem[]> {
-  const response = await fetch(buildApiUrl("/api/tags"));
+  const response = await apiFetch("/api/tags");
   if (!response.ok) {
     await handleApiError(response, "Failed to load tags");
   }
@@ -196,7 +263,7 @@ export async function fetchTags(): Promise<TagItem[]> {
 }
 
 export async function createTag(name: string): Promise<TagItem> {
-  const response = await fetch(buildApiUrl("/api/tags"), {
+  const response = await apiFetch("/api/tags", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
@@ -208,7 +275,7 @@ export async function createTag(name: string): Promise<TagItem> {
 }
 
 export async function deleteTag(tagId: number): Promise<void> {
-  const response = await fetch(buildApiUrl(`/api/tags/${tagId}`), {
+  const response = await apiFetch(`/api/tags/${tagId}`, {
     method: "DELETE",
   });
   if (!response.ok) {
@@ -217,7 +284,7 @@ export async function deleteTag(tagId: number): Promise<void> {
 }
 
 export async function fetchSubtasks(taskId: number): Promise<SubtaskItem[]> {
-  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}/subtasks`));
+  const response = await apiFetch(`/api/tasks/${taskId}/subtasks`);
   if (!response.ok) {
     await handleApiError(response, "Failed to load subtasks");
   }
@@ -230,7 +297,7 @@ export async function fetchSubtasks(taskId: number): Promise<SubtaskItem[]> {
 }
 
 export async function createSubtask(taskId: number, title: string): Promise<SubtaskItem> {
-  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}/subtasks`), {
+  const response = await apiFetch(`/api/tasks/${taskId}/subtasks`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title }),
@@ -246,7 +313,7 @@ export async function updateSubtask(
   subtaskId: number,
   body: { title?: string; isDone?: boolean },
 ): Promise<void> {
-  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}/subtasks/${subtaskId}`), {
+  const response = await apiFetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -257,7 +324,7 @@ export async function updateSubtask(
 }
 
 export async function deleteSubtask(taskId: number, subtaskId: number): Promise<void> {
-  const response = await fetch(buildApiUrl(`/api/tasks/${taskId}/subtasks/${subtaskId}`), {
+  const response = await apiFetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, {
     method: "DELETE",
   });
   if (!response.ok) {

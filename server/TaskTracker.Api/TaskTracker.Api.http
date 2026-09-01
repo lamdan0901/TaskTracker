@@ -1,6 +1,77 @@
-@TaskTracker.Api_HostAddress = http://localhost:5228
+@Host = http://localhost:5228
 
-GET {{TaskTracker.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### 1. Register User A
+POST {{Host}}/api/auth/register
+Content-Type: application/json
 
-###
+{
+  "email": "alice@example.com",
+  "password": "Password123!"
+}
+
+### 2. Register User B
+POST {{Host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "bob@example.com",
+  "password": "Password123!"
+}
+
+### 3. Login User A (Copy accessToken)
+# @name loginAlice
+POST {{Host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "Password123!"
+}
+
+@aliceToken = {{loginAlice.response.body.token}}
+
+### 4. Login User B (Copy accessToken)
+# @name loginBob
+POST {{Host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "bob@example.com",
+  "password": "Password123!"
+}
+
+@bobToken = {{loginBob.response.body.token}}
+
+### 5. Verify Me Endpoint for Alice
+GET {{Host}}/api/auth/me
+Authorization: Bearer {{aliceToken}}
+
+### 6. Alice creates a task (Note created task ID)
+# @name createAliceTask
+POST {{Host}}/api/tasks
+Authorization: Bearer {{aliceToken}}
+Content-Type: application/json
+
+{
+  "title": "Alice's Secret Task",
+  "priority": "High"
+}
+
+@aliceTaskId = {{createAliceTask.response.body.id}}
+
+### 7. Alice can view her task (Expect 200 OK)
+GET {{Host}}/api/tasks/{{aliceTaskId}}
+Authorization: Bearer {{aliceToken}}
+
+### 8. Bob attempts to view Alice's task (Expect 404 Not Found - Data Scoping check!)
+GET {{Host}}/api/tasks/{{aliceTaskId}}
+Authorization: Bearer {{bobToken}}
+
+### 9. Bob attempts to edit Alice's task (Expect 404 Not Found)
+PUT {{Host}}/api/tasks/{{aliceTaskId}}
+Authorization: Bearer {{bobToken}}
+Content-Type: application/json
+
+{
+  "title": "Hacked by Bob"
+}

@@ -1,21 +1,28 @@
 import { memo } from "react";
 import type { Theme } from "../hooks/useTheme";
+import type { AuthUser } from "../types";
 import ThemeToggle from "./ThemeToggle";
 
 type HeroProps = {
-  totalCount: number;
-  completedCount: number;
-  remainingCount: number;
+  totalCount?: number;
+  completedCount?: number;
+  remainingCount?: number;
   theme: Theme;
   onToggleTheme: () => void;
+  user?: AuthUser | null;
+  onLogout?: () => void;
+  hideStats?: boolean;
 };
 
 function Hero({
-  totalCount,
-  completedCount,
-  remainingCount,
+  totalCount = 0,
+  completedCount = 0,
+  remainingCount = 0,
   theme,
   onToggleTheme,
+  user,
+  onLogout,
+  hideStats = false,
 }: HeroProps) {
   return (
     <section className="hero-panel">
@@ -25,20 +32,42 @@ function Hero({
       </div>
 
       <div className="hero-controls">
-        <div className="stats">
-          <div>
-            <strong>{totalCount}</strong>
-            <span>Total</span>
+        {!hideStats && (
+          <div className="stats">
+            <div>
+              <strong>{totalCount}</strong>
+              <span>Total</span>
+            </div>
+            <div>
+              <strong>{completedCount}</strong>
+              <span>Done</span>
+            </div>
+            <div>
+              <strong>{remainingCount}</strong>
+              <span>Open</span>
+            </div>
           </div>
-          <div>
-            <strong>{completedCount}</strong>
-            <span>Done</span>
+        )}
+
+        {user && onLogout && (
+          <div className="user-profile-badge">
+            <div className="user-avatar" title={user.email}>
+              {user.email.charAt(0).toUpperCase()}
+            </div>
+            <span className="user-email-text" title={user.email}>
+              {user.email}
+            </span>
+            <button
+              type="button"
+              className="user-logout-btn"
+              onClick={onLogout}
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              Sign out
+            </button>
           </div>
-          <div>
-            <strong>{remainingCount}</strong>
-            <span>Open</span>
-          </div>
-        </div>
+        )}
 
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
@@ -47,3 +76,4 @@ function Hero({
 }
 
 export default memo(Hero);
+

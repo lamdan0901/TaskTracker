@@ -1,6 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using TaskTracker.Api.Data;   // adjust/remove if unused
 
 namespace TaskTracker.Api.Features.Auth;
 
@@ -14,11 +13,16 @@ public static class Me
   // the whole point of putting claims in the token.
   private static IResult Handle(ClaimsPrincipal user)
   {
-    // If we cleared the inbound map, "sub" arrives as "sub".
-    // If we had NOT cleared it, it would arrive as ClaimTypes.NameIdentifier
-    var id = user.FindFirstValue(JwtRegisteredClaimNames.Sub);
-    var email = user.FindFirstValue(JwtRegisteredClaimNames.Email);
+    var idStr = user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+             ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+    var email = user.FindFirstValue(JwtRegisteredClaimNames.Email)
+             ?? user.FindFirstValue(ClaimTypes.Email);
 
-    return Results.Ok(new { Id = Guid.Parse(id!), Email = email });
+    if (!int.TryParse(idStr, out var id))
+    {
+      return Results.Unauthorized();
+    }
+
+    return Results.Ok(new { Id = id, Email = email });
   }
 }

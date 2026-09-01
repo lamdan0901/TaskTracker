@@ -9,14 +9,17 @@ import {
   deleteTag,
   deleteTask,
   fetchCategories,
+  fetchMe,
   fetchTags,
   fetchTasks,
   toErrorMessage,
   toggleAllTasks,
   updateTask,
 } from "./api";
+import { clearSession, getToken, getUser, onUnauthorized, setSession } from "./auth";
 import CategoryManager from "./components/CategoryManager";
 import Hero from "./components/Hero";
+import LoginForm from "./components/LoginForm";
 import Pagination from "./components/Pagination";
 import TagManager from "./components/TagManager";
 import TaskDetailModal from "./components/TaskDetailModal";
@@ -24,17 +27,32 @@ import TaskForm from "./components/TaskForm";
 import TaskTable from "./components/TaskTable";
 import TaskToolbar from "./components/TaskToolbar";
 import { useTheme } from "./hooks/useTheme";
-import type { CategoryItem, DoneFilter, Priority, QueryState, SortKey, TagItem, TaskItem } from "./types";
+import type {
+  AuthUser,
+  CategoryItem,
+  DoneFilter,
+  Priority,
+  QueryState,
+  SortKey,
+  TagItem,
+  TaskItem,
+} from "./types";
 import "./App.css";
 
 function App() {
   const { theme, toggleTheme } = useTheme();
+
+  // Authentication state
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => getUser());
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(() => !!getToken());
+  const [sessionMessage, setSessionMessage] = useState<string | null>(null);
+
   const [query, setQuery] = useState<QueryState>(defaultQuery);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [tags, setTags] = useState<TagItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingTags, setLoadingTags] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -45,6 +63,40 @@ function App() {
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+
+  // Listen for 401 unauthorized notifications
+  useEffect(() => {
+    const unsubscribe = onUnauthorized(() => {
+      setCurrentUser(null);
+      setSessionMessage("Your session has expired. Please sign in again.");
+      setTasks([]);
+      setCategories([]);
+      setTags([]);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Validate active token on initial app mount
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setIsCheckingAuth(false);
+      return;
+    }
+
+    void fetchMe()
+      .then((userProfile) => {
+        setCurrentUser(userProfile);
+        setSession(token, userProfile);
+      })
+      .catch(() => {
+        clearSession();
+        setCurrentUser(null);
+      })
+      .finally(() => {
+        setIsCheckingAuth(false);
+      });
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const completedCount = useMemo(
@@ -68,6 +120,7 @@ function App() {
   const rangeEnd = Math.min(totalCount, (query.pageIndex + 1) * PAGE_SIZE);
 
   const loadTasks = useCallback(async (): Promise<boolean> => {
+    if (!currentUser) return false;
     setLoading(true);
     setError(null);
 
@@ -82,9 +135,10 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [currentUser, query]);
 
   const loadCategories = useCallback(async (): Promise<boolean> => {
+    if (!currentUser) return false;
     setLoadingCategories(true);
     try {
       const data = await fetchCategories();
@@ -96,9 +150,10 @@ function App() {
     } finally {
       setLoadingCategories(false);
     }
-  }, []);
+  }, [currentUser]);
 
   const loadTags = useCallback(async (): Promise<boolean> => {
+    if (!currentUser) return false;
     setLoadingTags(true);
     try {
       const data = await fetchTags();
@@ -110,19 +165,25 @@ function App() {
     } finally {
       setLoadingTags(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
-    void loadTasks();
-  }, [loadTasks]);
+    if (currentUser) {
+      void loadTasks();
+    }
+  }, [currentUser, loadTasks]);
 
   useEffect(() => {
-    void loadCategories();
-  }, [loadCategories]);
+    if (currentUser) {
+      void loadCategories();
+    }
+  }, [currentUser, loadCategories]);
 
   useEffect(() => {
-    void loadTags();
-  }, [loadTags]);
+    if (currentUser) {
+      void loadTags();
+    }
+  }, [currentUser, loadTags]);
 
   useEffect(() => {
     if (totalCount > 0 && query.pageIndex >= totalPages) {
@@ -348,6 +409,68 @@ function App() {
     [query.tagId, loadTags, loadTasks],
   );
 
+  const handleLoginSuccess = useCallback((user: AuthUser) => {
+    setCurrentUser(user);
+    setSessionMessage(null);
+    setError(null);
+    setQuery(defaultQuery());
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    clearSession();
+    setCurrentUser(null);
+    setTasks([]);
+    setCategories([]);
+    setTags([]);
+    setTotalCount(0);
+    setError(null);
+    setSessionMessage(null);
+  }, []);
+
+  if (isCheckingAuth) {
+    return (
+      <main className="app-shell">
+        <Hero theme={theme} onToggleTheme={toggleTheme} hideStats={true} />
+        <section className="workspace auth-loading-workspace">
+          <div className="auth-spinner-container">
+            <span className="auth-spinner large" aria-hidden="true" />
+            <p>Checking authentication session...</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <main className="app-shell">
+        <Hero theme={theme} onToggleTheme={toggleTheme} hideStats={true} />
+
+        {sessionMessage && (
+          <div className="alert session-alert" role="alert">
+            <svg
+              className="alert-icon"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+              width="18"
+              height="18"
+            >
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span>{sessionMessage}</span>
+          </div>
+        )}
+
+        <LoginForm onSuccess={handleLoginSuccess} />
+      </main>
+    );
+  }
+
   return (
     <main className="app-shell">
       <Hero
@@ -356,6 +479,8 @@ function App() {
         remainingCount={remainingCount}
         theme={theme}
         onToggleTheme={toggleTheme}
+        user={currentUser}
+        onLogout={handleLogout}
       />
 
       <section className="workspace">

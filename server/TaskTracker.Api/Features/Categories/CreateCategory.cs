@@ -1,13 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TaskTracker.Api.Common;
 using TaskTracker.Api.Data;
 using TaskTracker.Api.Data.Entities;
 
 namespace TaskTracker.Api.Features.Categories;
 
 public sealed record CategoryCreateRequest(
-  [Required(AllowEmptyStrings = false,ErrorMessage = "Category name is required.")]
+  [Required(AllowEmptyStrings = false, ErrorMessage = "Category name is required.")]
   [MaxLength(50)]
   string Name
 );
@@ -16,7 +17,11 @@ public static class CreateCategory
 {
   public static void Map(IEndpointRouteBuilder app) => app.MapPost("/api/categories", Handle);
 
-  private static async Task<IResult> Handle(CategoryCreateRequest req, AppDbContext db, CancellationToken ct)
+  private static async Task<IResult> Handle(
+    CategoryCreateRequest req,
+    AppDbContext db,
+    ICurrentUser currentUser,
+    CancellationToken ct)
   {
     var trimmedName = req.Name.Trim();
     var exists = await db.Categories.AnyAsync(c => c.Name == trimmedName, ct);
@@ -30,7 +35,12 @@ public static class CreateCategory
       });
     }
 
-    var category = new Category { Name = trimmedName };
+    var category = new Category
+    {
+      Name = trimmedName,
+      OwnerId = currentUser.RequireId()
+    };
+
     db.Categories.Add(category);
     await db.SaveChangesAsync(ct);
 
